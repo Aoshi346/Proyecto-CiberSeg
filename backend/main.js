@@ -1,8 +1,9 @@
+// Este es el archivo principal de Electron, se encarga de la creación de la ventana principal y la configuración de la aplicación.
 const { app, BrowserWindow, ipcMain, session, Menu } = require('electron');
 const path = require('path');
 const os = require('os');
 
-// Set userData path early to avoid OneDrive permission issues
+// Asignar la ruta de userData
 try {
   const tempBase = path.join(os.tmpdir(), 'ciberseg');
   app.setPath('userData', tempBase);
@@ -10,7 +11,7 @@ try {
   console.warn('Failed setting userData path', e);
 }
 
-// Reduce cache-related issues
+// Reducir problemas relacionados con el caché
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
 app.commandLine.appendSwitch('disable-gpu');
 app.disableHardwareAcceleration();
@@ -31,11 +32,11 @@ function createWindow() {
     autoHideMenuBar: true
   });
   
-  // Clear caches on start to avoid residual permission issues
+  // Limpiar el caché al inicio para evitar problemas de permisos residuales
   win.webContents.session.clearCache();
   session.defaultSession?.clearCache();
 
-  // Hide the menu bar for this window explicitly
+  // Ocultar la barra de menú para esta ventana explícitamente
   win.setMenuBarVisibility(false);
   
   win.loadFile(path.join(__dirname, '..', 'frontend', 'renderer', 'index.html'));
@@ -46,7 +47,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  // Remove the global application menu (File/Edit/View...)
+  // Eliminar el menú de aplicación global (File/Edit/View...)
   try { Menu.setApplicationMenu(null); } catch (_) {}
   createWindow();
   setupIPC();
@@ -56,12 +57,12 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// IPC Handlers for security functions
+// Controladores IPC para funciones de seguridad
 function setupIPC() {
   // Vulnerability scanning
   ipcMain.handle('scan-vulnerabilities', async () => {
     console.log('Starting vulnerability scan...');
-    // Simulate scan process
+    // Simular el proceso de escaneo
     return {
       status: 'completed',
       vulnerabilities: [
@@ -73,7 +74,7 @@ function setupIPC() {
     };
   });
 
-  // Password generation
+  // Generación de contraseñas
   ipcMain.handle('generate-password', async (event, options) => {
     const { length = 16, includeSymbols = true, includeNumbers = true } = options;
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
@@ -96,7 +97,7 @@ function setupIPC() {
     };
   });
 
-  // Network monitoring
+  // Monitoreo de red
   ipcMain.handle('monitor-network', async () => {
     console.log('Starting network monitoring...');
     return {
@@ -108,7 +109,7 @@ function setupIPC() {
     };
   });
 
-  // Forensic analysis
+  // Análisis forense
   ipcMain.handle('forensic-analysis', async (event, filePath) => {
     console.log(`Starting forensic analysis of: ${filePath}`);
     return {
@@ -125,7 +126,7 @@ function setupIPC() {
     };
   });
 
-  // System information
+  // Información del sistema
   ipcMain.handle('get-system-info', async () => {
     return {
       platform: process.platform,
@@ -137,7 +138,7 @@ function setupIPC() {
     };
   });
 
-  // Security status
+  // Estado de seguridad
   ipcMain.handle('get-security-status', async () => {
     return {
       overall: 'secure',
@@ -151,22 +152,22 @@ function setupIPC() {
   });
 }
 
-// Helper function to calculate password strength
+// Función auxiliar para calcular la fortaleza de la contraseña
 function calculatePasswordStrength(password) {
   let score = 0;
   
-  // Length check
+  // Verificación de longitud
   if (password.length >= 8) score += 1;
   if (password.length >= 12) score += 1;
   if (password.length >= 16) score += 1;
   
-  // Character variety
+  // Verificación de variedad de caracteres
   if (/[a-z]/.test(password)) score += 1;
   if (/[A-Z]/.test(password)) score += 1;
   if (/[0-9]/.test(password)) score += 1;
   if (/[^A-Za-z0-9]/.test(password)) score += 1;
   
-  // Determine strength level
+  // Determinar el nivel de fortaleza
   if (score <= 3) return 'weak';
   if (score <= 5) return 'medium';
   if (score <= 7) return 'strong';
