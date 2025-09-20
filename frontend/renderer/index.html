@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Proyecto CiberSeg</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 text-gray-900 font-sans">
+  <div class="flex h-screen">
+    <!-- Sidebar -->
+    <nav id="app-sidebar"
+      class="sidebar bg-gray-50 p-5 flex flex-col justify-between border-r border-gray-200 transition-all duration-300">
+      <div class="mb-8">
+        <div class="flex items-center gap-3 justify-between">
+          <div class="flex items-center gap-3 sidebar-brand">
+            <div
+              class="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center text-white text-xl">
+              <i class="fas fa-shield-alt"></i>
+            </div>
+            <div class="text-gray-900 sidebar-title">
+              <h2 class="text-lg font-semibold m-0">CiberSeg</h2>
+              <span class="text-sm text-gray-500">Security Suite</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-2 mb-8" id="nav-menu">
+        <div
+          class="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors duration-150 ease-in-out bg-blue-100 text-blue-700 border border-blue-200 nav-item"
+          data-section="dashboard">
+          <i class="fas fa-home w-5 text-center"></i>
+          <span class="sidebar-label">Dashboard</span>
+        </div>
+        <div
+          class="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors duration-150 ease-in-out hover:bg-gray-100 text-gray-700 nav-item"
+          data-section="passwords">
+          <i class="fas fa-key w-5 text-center"></i>
+          <span class="sidebar-label">Contraseñas</span>
+        </div>
+        <div
+          class="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors duration-150 ease-in-out hover:bg-gray-100 text-gray-700 nav-item"
+          data-section="simulation">
+          <i class="fas fa-vr-cardboard w-5 text-center"></i>
+          <span class="sidebar-label">Simulación</span>
+        </div>
+        <div
+          class="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors duration-150 ease-in-out hover:bg-gray-100 text-gray-700 nav-item"
+          data-section="forensics">
+          <i class="fas fa-search w-5 text-center"></i>
+          <span class="sidebar-label">Forenses</span>
+        </div>
+        <div
+          class="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors duration-150 ease-in-out hover:bg-gray-100 text-gray-700 nav-item"
+          data-section="settings">
+          <i class="fas fa-cog w-5 text-center"></i>
+          <span class="sidebar-label">Configuración</span>
+        </div>
+      </div>
+
+      <div class="text-sm text-gray-500">
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full bg-green-500"></div>
+          <span class="text-gray-600">Sistema Activo</span>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main -->
+    <main class="main-content flex-1 p-6 overflow-auto bg-gray-100" id="main-content">
+      <!-- Header -->
+      <header class="flex justify-between items-center mb-6">
+        <div class="flex items-center gap-4">
+          <button id="mobile-menu-toggle"
+            class="md:hidden p-2 rounded-lg bg-white border border-gray-200 shadow-sm hover:bg-gray-50 transition-all duration-200">
+            <i class="fas fa-bars text-gray-600"></i>
+          </button>
+          <div class="flex flex-col">
+            <h1 id="page-title" class="text-2xl font-bold text-gray-800 m-0">Dashboard</h1>
+            <p id="page-subtitle" class="text-sm text-gray-500 m-0">Centro de herramientas de ciberseguridad</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-gray-200">
+            <i class="fas fa-search text-gray-400"></i>
+            <input type="text" placeholder="Buscar herramientas..." class="outline-none text-gray-700 bg-transparent" />
+          </div>
+        </div>
+      </header>
+
+      <!-- Secciones -->
+      <div class="mt-6">
+        <!-- Dashboard -->
+        <section id="dashboard-section" class="content-section active">
+
+          <div id="dashboard-modules"
+            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 modules-grid transition-all duration-500">
+            <!-- Carta Bienvenida -->
+            <div
+              class="col-span-full bg-white p-6 rounded-xl shadow-md border border-gray-200 transition-transform duration-500">
+              <div class="flex flex-col gap-4">
+                <div>
+                  <h2 class="text-xl font-semibold text-gray-800">Bienvenido a CiberSeg</h2>
+                  <p class="text-sm text-gray-500">Explora y utiliza las herramientas disponibles para fortalecer tu
+                    seguridad.</p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div
+                    class="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-100 text-blue-700">
+                    <i class="fas fa-shield-alt"></i>
+                    <span class="text-sm font-medium">Estado: Activo</span>
+                  </div>
+                  <div
+                    class="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-700">
+                    <i class="fas fa-toolbox"></i>
+                    <span class="text-sm font-medium">Módulos: 3 activos</span>
+                  </div>
+                  <div
+                    class="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-700">
+                    <i class="fas fa-sync-alt"></i>
+                    <span class="text-sm font-medium">Actualizado: Hoy</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Carta Contraseñas -->
+            <div
+              class="bg-white p-4 rounded-xl shadow-md border border-gray-200 transition-transform duration-500 module-card"
+              data-module="passwords">
+              <div class="flex justify-between items-center mb-3">
+                <div class="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 text-xl">
+                  <i class="fas fa-key"></i>
+                </div>
+                <div class="text-xs font-semibold px-2 py-1 rounded-full bg-green-100 text-green-700">
+                  <span>Activo</span>
+                </div>
+              </div>
+              <h3 class="text-lg font-semibold text-gray-800 mt-3 mb-1">Gestión de Contraseñas</h3>
+              <p class="text-sm text-gray-500 leading-relaxed">Administra y genera contraseñas seguras con cifrado
+                robusto.</p>
+              <div class="mt-4 flex gap-2">
+                <button class="btn-primary w-full" data-action="generate-password">
+                  <i class="fas fa-plus"></i>
+                  Nueva Contraseña
+                </button>
+              </div>
+            </div>
+
+            <!-- Carta Simulación -->
+            <div
+              class="bg-white p-4 rounded-xl shadow-md border border-gray-200 transition-transform duration-500 module-card"
+              data-module="simulation">
+              <div class="flex justify-between items-center mb-3">
+                <div class="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 text-xl">
+                  <i class="fas fa-vr-cardboard"></i>
+                </div>
+                <div class="text-xs font-semibold px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">
+                  <span>Beta</span>
+                </div>
+              </div>
+              <h3 class="text-lg font-semibold text-gray-800 mt-3 mb-1">Simulación de Entorno</h3>
+              <p class="text-sm text-gray-500 leading-relaxed">Crea entornos virtuales para probar configuraciones y
+                ataques controlados.</p>
+              <div class="mt-4 flex gap-2">
+                <button class="btn-primary w-full" data-action="start-simulation">
+                  <i class="fas fa-play-circle"></i>
+                  Iniciar Simulación
+                </button>
+              </div>
+            </div>
+
+            <!-- Carta Forenses -->
+            <div
+              class="bg-white p-4 rounded-xl shadow-md border border-gray-200 transition-transform duration-500 module-card"
+              data-module="forensics">
+              <div class="flex justify-between items-center mb-3">
+                <div class="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 text-xl">
+                  <i class="fas fa-search"></i>
+                </div>
+                <div class="text-xs font-semibold px-2 py-1 rounded-full bg-green-100 text-green-700">
+                  <span>Activo</span>
+                </div>
+              </div>
+              <h3 class="text-lg font-semibold text-gray-800 mt-3 mb-1">Herramientas Forenses</h3>
+              <p class="text-sm text-gray-500 leading-relaxed">Analiza archivos y dispositivos para investigación
+                digital forense.</p>
+              <div class="mt-4 flex gap-2">
+                <button class="btn-primary w-full" data-action="run-analysis">
+                  <i class="fas fa-folder-open"></i>
+                  Abrir Análisis
+                </button>
+              </div>
+            </div>
+
+            <!-- Carta Próximamente -->
+            <div
+              class="bg-white p-4 rounded-xl shadow-md border border-gray-200 transition-transform duration-500 module-card"
+              data-module="coming-soon">
+              <div class="flex justify-between items-center mb-3">
+                <div class="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 text-xl">
+                  <i class="fas fa-plus-circle"></i>
+                </div>
+                <div class="text-xs font-semibold px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">
+                  <span>Próximamente</span>
+                </div>
+              </div>
+              <h3 class="text-lg font-semibold text-gray-800 mt-3 mb-1">Más Herramientas</h3>
+              <p class="text-sm text-gray-500 leading-relaxed">Nuevos módulos de ciberseguridad en desarrollo activo.
+              </p>
+              <div class="mt-4 flex gap-2">
+                <button
+                  class="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-gray-100 text-gray-500 font-semibold text-sm border border-gray-200 cursor-not-allowed w-full"
+                  disabled>
+                  <i class="fas fa-clock"></i>
+                  En Desarrollo
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- Sección Contraseñas -->
+        <section id="passwords-section" class="content-section hidden">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+              <div class="flex items-center gap-3 mb-4">
+                <div class="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 text-xl">
+                  <i class="fas fa-key"></i>
+                </div>
+                <div>
+                  <h3 class="text-lg font-semibold text-gray-800">Generador de Contraseñas</h3>
+                  <p class="text-sm text-gray-500">Crea contraseñas seguras</p>
+                </div>
+              </div>
+              <button class="btn-primary w-full" data-action="generate-password">
+                <i class="fas fa-plus"></i>
+                Generar Nueva Contraseña
+              </button>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+              <div class="flex items-center gap-3 mb-4">
+                <div class="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center text-green-600 text-xl">
+                  <i class="fas fa-lock"></i>
+                </div>
+                <div>
+                  <h3 class="text-lg font-semibold text-gray-800">Gestor de Contraseñas</h3>
+                  <p class="text-sm text-gray-500">Administra tus contraseñas</p>
+                </div>
+              </div>
+              <div class="space-y-3">
+                <div class="flex items-center gap-2">
+                  <i class="fas fa-check-circle text-green-500"></i>
+                  <span class="text-sm text-gray-600">Cifrado AES-256</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <i class="fas fa-check-circle text-green-500"></i>
+                  <span class="text-sm text-gray-600">Autenticación biométrica</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <i class="fas fa-check-circle text-green-500"></i>
+                  <span class="text-sm text-gray-600">Sincronización segura</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- Sección Forenses -->
+        <section id="forensics-section" class="content-section hidden">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+              <div class="flex items-center gap-3 mb-4">
+                <div
+                  class="w-12 h-12 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 text-xl">
+                  <i class="fas fa-search"></i>
+                </div>
+                <div>
+                  <h3 class="text-lg font-semibold text-gray-800">Análisis Forense</h3>
+                  <p class="text-sm text-gray-500">Examina archivos y dispositivos</p>
+                </div>
+              </div>
+              <button class="btn-primary w-full" data-action="run-analysis">
+                <i class="fas fa-folder-open"></i>
+                Iniciar Análisis
+              </button>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+              <div class="flex items-center gap-3 mb-4">
+                <div class="w-12 h-12 rounded-lg bg-teal-100 flex items-center justify-center text-teal-600 text-xl">
+                  <i class="fas fa-file-alt"></i>
+                </div>
+                <div>
+                  <h3 class="text-lg font-semibold text-gray-800">Herramientas Disponibles</h3>
+                  <p class="text-sm text-gray-500">Funciones de análisis digital</p>
+                </div>
+              </div>
+              <div class="space-y-3">
+                <div class="flex items-center gap-2">
+                  <i class="fas fa-check-circle text-green-500"></i>
+                  <span class="text-sm text-gray-600">Análisis de hash SHA-256</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <i class="fas fa-check-circle text-green-500"></i>
+                  <span class="text-sm text-gray-600">Detección de malware</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <i class="fas fa-check-circle text-green-500"></i>
+                  <span class="text-sm text-gray-600">Recuperación de metadatos</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Sección Configuración -->
+        <section id="settings-section" class="content-section hidden">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+              <div class="flex items-center gap-3 mb-4">
+                <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 text-xl">
+                  <i class="fas fa-cog"></i>
+                </div>
+                <div>
+                  <h3 class="text-lg font-semibold text-gray-800">Configuración General</h3>
+                  <p class="text-sm text-gray-500">Ajustes del sistema</p>
+                </div>
+              </div>
+              <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-gray-600">Notificaciones</span>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" class="sr-only peer" checked>
+                    <div
+                      class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+                    </div>
+                  </label>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-gray-600">Escaneo automático</span>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" class="sr-only peer" checked>
+                    <div
+                      class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+              <div class="flex items-center gap-3 mb-4">
+                <div class="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 text-xl">
+                  <i class="fas fa-info-circle"></i>
+                </div>
+                <div>
+                  <h3 class="text-lg font-semibold text-gray-800">Información del Sistema</h3>
+                  <p class="text-sm text-gray-500">Estado y detalles del sistema</p>
+                </div>
+              </div>
+              <div class="space-y-2">
+                <div class="flex justify-between items-center">
+                  <span class="text-sm text-gray-600">Versión:</span>
+                  <span class="text-sm font-semibold text-gray-800">1.0.0</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-sm text-gray-600">Plataforma:</span>
+                  <span class="text-sm font-semibold text-gray-800">Windows</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-sm text-gray-600">Última actualización:</span>
+                  <span class="text-sm font-semibold text-gray-800">Hoy</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Sección Simulación -->
+        <section id="simulation-section" class="content-section hidden">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+              <div class="flex items-center gap-3 mb-4">
+                <div class="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 text-xl">
+                  <i class="fas fa-vr-cardboard"></i>
+                </div>
+                <div>
+                  <h3 class="text-lg font-semibold text-gray-800">Simulación de Entorno</h3>
+                  <p class="text-sm text-gray-500">Crea entornos virtuales controlados</p>
+                </div>
+              </div>
+              <div class="space-y-3">
+                <button class="btn-primary w-full" data-action="start-simulation">
+                  <i class="fas fa-play-circle"></i>
+                  Iniciar Simulación
+                </button>
+                <button class="btn-secondary w-full" data-action="config-simulation">
+                  <i class="fas fa-sliders-h"></i>
+                  Configurar Entorno
+                </button>
+              </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+              <div class="flex items-center gap-3 mb-4">
+                <div
+                  class="w-12 h-12 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 text-xl">
+                  <i class="fas fa-info-circle"></i>
+                </div>
+                <div>
+                  <h3 class="text-lg font-semibold text-gray-800">Guía Rápida</h3>
+                  <p class="text-sm text-gray-500">Pasos para iniciar una simulación</p>
+                </div>
+              </div>
+              <ol class="list-decimal pl-5 text-sm text-gray-700 space-y-1">
+                <li>Configura el escenario</li>
+                <li>Selecciona recursos</li>
+                <li>Ejecuta la simulación</li>
+                <li>Revisa resultados</li>
+              </ol>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+
+</html>
