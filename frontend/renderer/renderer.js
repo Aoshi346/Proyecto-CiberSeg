@@ -139,14 +139,14 @@ class CiberSegApp {
     
     // Actualizar la navegación con el estado correcto de restablecimiento
     document.querySelectorAll('.nav-item').forEach(item => {
-      // Remove all active states
+      // Remover todos los estados activos
       item.classList.remove('bg-blue-100', 'text-blue-700', 'border-blue-200', 'border-blue-200');
-      // Reset to default states
+      // Restablecer a estados por defecto
       item.classList.add('text-gray-700');
-      item.classList.remove('hover:bg-gray-100'); // Remove to allow proper hover
+      item.classList.remove('hover:bg-gray-100'); // Remover para permitir hover adecuado
     });
     
-    // Set active state for target navigation
+    // Establecer estado activo para la navegación objetivo
     const targetNav = document.querySelector(`[data-section="${section}"]`);
     if (targetNav) {
       targetNav.classList.add('bg-blue-100', 'text-blue-700', 'border-blue-200');
