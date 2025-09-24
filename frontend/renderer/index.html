@@ -8,6 +8,72 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Estilos coherentes para elementos de la barra lateral */
+    .nav-item { 
+      position: relative; 
+      border-radius: 12px; 
+      transition: all 200ms ease;
+    }
+    .nav-item .active-indicator {
+      position: absolute; 
+      right: 12px; 
+      top: 50%; 
+      transform: translateY(-50%);
+      width: 8px; 
+      height: 8px; 
+      border-radius: 50%;
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      opacity: 0; 
+      scale: 0.5; 
+      transition: all 200ms ease;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+    .nav-item:hover { 
+      background: rgba(37, 99, 235, 0.08); 
+      transform: translateX(2px);
+    }
+    .nav-item.active { 
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(29, 78, 216, 0.1) 100%); 
+      color: #1d4ed8; 
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+      transform: translateX(4px);
+    }
+    .nav-item.active .active-indicator { 
+      opacity: 1; 
+      scale: 1;
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+    }
+    .nav-item .icon { 
+      color: #6b7280; 
+      transition: all 200ms ease; 
+    }
+    .nav-item:hover .icon { 
+      transform: scale(1.1); 
+      color: #4b5563;
+    }
+    .nav-item.active .icon { 
+      color: #1d4ed8; 
+      transform: scale(1.05);
+    }
+    .nav-item .sidebar-label { 
+      transition: all 200ms ease; 
+      color: #374151;
+    }
+    .nav-item:hover .sidebar-label { 
+      color: #1f2937;
+    }
+    .nav-item.active .sidebar-label { 
+      font-weight: 600; 
+      color: #1d4ed8;
+    }
+    @media (prefers-reduced-motion: reduce) { 
+      .nav-item, .nav-item .icon, .nav-item .active-indicator, .nav-item .sidebar-label { 
+        transition: none; 
+      } 
+    }
+  </style>
 </head>
 
 <body class="bg-gray-100 text-gray-900 font-sans">
@@ -32,33 +98,38 @@
 
       <div class="flex flex-col gap-2 mb-8" id="nav-menu">
         <div
-          class="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors duration-150 ease-in-out bg-blue-100 text-blue-700 border border-blue-200 nav-item"
+          class="nav-item active relative group flex items-center gap-3 p-3 rounded-xl cursor-pointer border transition-all duration-200 ease-out"
           data-section="dashboard">
-          <i class="fas fa-home w-5 text-center"></i>
+          <span class="active-indicator"></span>
+          <i class="fas fa-home w-5 text-center icon"></i>
           <span class="sidebar-label">Dashboard</span>
         </div>
         <div
-          class="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors duration-150 ease-in-out hover:bg-gray-100 text-gray-700 nav-item"
+          class="nav-item relative group flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ease-out border border-transparent"
           data-section="passwords">
-          <i class="fas fa-key w-5 text-center"></i>
+          <span class="active-indicator"></span>
+          <i class="fas fa-key w-5 text-center icon"></i>
           <span class="sidebar-label">Contraseñas</span>
         </div>
         <div
-          class="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors duration-150 ease-in-out hover:bg-gray-100 text-gray-700 nav-item"
+          class="nav-item relative group flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ease-out border border-transparent"
           data-section="simulation">
-          <i class="fas fa-vr-cardboard w-5 text-center"></i>
+          <span class="active-indicator"></span>
+          <i class="fas fa-vr-cardboard w-5 text-center icon"></i>
           <span class="sidebar-label">Simulación</span>
         </div>
         <div
-          class="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors duration-150 ease-in-out hover:bg-gray-100 text-gray-700 nav-item"
+          class="nav-item relative group flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ease-out border border-transparent"
           data-section="forensics">
-          <i class="fas fa-search w-5 text-center"></i>
+          <span class="active-indicator"></span>
+          <i class="fas fa-search w-5 text-center icon"></i>
           <span class="sidebar-label">Forenses</span>
         </div>
         <div
-          class="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors duration-150 ease-in-out hover:bg-gray-100 text-gray-700 nav-item"
+          class="nav-item relative group flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ease-out border border-transparent"
           data-section="settings">
-          <i class="fas fa-cog w-5 text-center"></i>
+          <span class="active-indicator"></span>
+          <i class="fas fa-cog w-5 text-center icon"></i>
           <span class="sidebar-label">Configuración</span>
         </div>
       </div>
@@ -113,33 +184,38 @@
                 </div>
               </div>
               
+              <!-- Resumen superior -->
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+                <div class="p-4 rounded-lg border border-green-200 bg-green-50">
+                  <div class="text-xs text-green-700">Puntuación</div>
+                  <div class="text-2xl font-semibold text-green-700">85</div>
+                </div>
+                <div class="p-4 rounded-lg border border-blue-200 bg-blue-50">
+                  <div class="text-xs text-blue-700">Módulos Activos</div>
+                  <div class="text-2xl font-semibold text-blue-700">3</div>
+                </div>
+                <div class="p-4 rounded-lg border border-gray-200 bg-gray-50">
+                  <div class="text-xs text-gray-600">Última actividad</div>
+                  <div class="text-sm font-medium text-gray-800">Hoy 10:24</div>
+                </div>
+              </div>
+
               <!-- Cuadrícula de Contenido Principal -->
               <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- Sección Izquierda: Estadísticas y Acciones -->
                 <div class="space-y-4">
-                  <!-- Estadísticas de Información Rápida -->
-                  <div class="grid grid-cols-2 gap-3">
-                    <div class="text-center p-3 bg-green-50 rounded-lg border border-green-100">
-                      <div class="text-2xl font-bold text-green-600">85</div>
-                      <div class="text-xs text-green-700">Puntuación</div>
-                    </div>
-                    <div class="text-center p-3 bg-blue-50 rounded-lg border border-blue-100">
-                      <div class="text-2xl font-bold text-blue-600">3</div>
-                      <div class="text-xs text-blue-700">Módulos Activos</div>
-                    </div>
-                  </div>
-                  
                   <!-- Acciones Rápidas -->
-                  <div class="space-y-2">
-                    <button class="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-200 text-sm">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-200">
                       <i class="fas fa-plus"></i>
                       <span>Acción Rápida</span>
                     </button>
-                    <button class="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors duration-200 text-sm">
+                    <button class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors duration-200">
                       <i class="fas fa-chart-line"></i>
                       <span>Ver Reportes</span>
                     </button>
                   </div>
+                  <p class="text-xs text-gray-500">Accede rápidamente a funciones clave y revisa reportes recientes.</p>
                 </div>
                 
                 <!-- Sección Derecha: Registro de Actividad -->
@@ -154,7 +230,8 @@
                     </div>
                   </div>
                   
-                  <div class="space-y-3 max-h-64 overflow-y-auto">
+                  <div class="relative max-h-64 overflow-y-auto pl-5">
+                    <div class="absolute left-2 top-0 bottom-0 w-px bg-gray-200"></div>
                     <div class="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
                       <div class="w-2 h-2 rounded-full bg-green-500 mt-2"></div>
                       <div class="flex-1">
@@ -306,33 +383,35 @@
               </div>
             </div>
 
-            <!-- Cuadrícula 6: Herramientas Adicionales -->
+            <!-- Cuadrícula 6: Módulo Forense (movido desde Cuadrícula 5) -->
             <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200 transition-transform duration-500 hover:shadow-lg">
               <div class="flex items-center gap-3 mb-4">
-                <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center text-white text-xl">
-                  <i class="fas fa-tools"></i>
+                <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xl">
+                  <i class="fas fa-search"></i>
                 </div>
                 <div>
-                  <h3 class="text-lg font-semibold text-gray-800">Herramientas</h3>
-                  <p class="text-sm text-gray-500">Utilidades adicionales</p>
+                  <h3 class="text-lg font-semibold text-gray-800">Forense</h3>
+                  <p class="text-sm text-gray-500">Análisis digital</p>
                 </div>
               </div>
               
               <div class="space-y-3">
-                <div class="p-3 bg-gray-50 rounded-lg text-center">
-                  <i class="fas fa-hammer text-gray-400 text-2xl mb-2"></i>
-                  <div class="text-sm text-gray-600">Nuevas herramientas</div>
-                  <div class="text-xs text-gray-500">En desarrollo</div>
+                <div class="p-3 bg-gray-50 rounded-lg">
+                  <div class="flex justify-between items-center mb-1">
+                    <span class="text-sm font-medium text-gray-700">Último análisis:</span>
+                    <span class="text-xs text-gray-500">Hace 1h</span>
+                  </div>
+                  <div class="text-xs text-gray-600">documento_sospechoso.pdf</div>
                 </div>
                 
-                <button class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed" disabled>
-                  <i class="fas fa-clock"></i>
-                  <span>Próximamente</span>
+                <button class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors duration-200">
+                  <i class="fas fa-upload"></i>
+                  <span>Analizar Archivo</span>
                 </button>
                 
                 <button class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors duration-200 text-sm">
-                  <i class="fas fa-info-circle"></i>
-                  <span>Más Info</span>
+                  <i class="fas fa-history"></i>
+                  <span>Ver Reportes</span>
                 </button>
               </div>
             </div>

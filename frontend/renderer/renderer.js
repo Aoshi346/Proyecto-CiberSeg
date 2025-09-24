@@ -93,6 +93,15 @@ class CiberSegApp {
     // Navegación de la barra lateral: asegurar que los elementos de navegación con no data-section no fallen
     document.querySelectorAll('.nav-item').forEach(item => {
       if (!item.dataset.section) item.dataset.section = 'dashboard';
+      // Accesibilidad: activar con Enter/Espacio
+      item.setAttribute('tabindex', '0');
+      item.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          const section = item.dataset.section;
+          this.navigateToSection(section);
+        }
+      });
     });
   }
 
@@ -137,21 +146,10 @@ class CiberSegApp {
   navigateToSection(section) {
     console.log(`Navegando a la sección: ${section}`);
     
-    // Actualizar la navegación con el estado correcto de restablecimiento
-    document.querySelectorAll('.nav-item').forEach(item => {
-      // Remover todos los estados activos
-      item.classList.remove('bg-blue-100', 'text-blue-700', 'border-blue-200', 'border-blue-200');
-      // Restablecer a estados por defecto
-      item.classList.add('text-gray-700');
-      item.classList.remove('hover:bg-gray-100'); // Remover para permitir hover adecuado
-    });
-    
-    // Establecer estado activo para la navegación objetivo
+    // Actualizar navegación con clases coherentes
+    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
     const targetNav = document.querySelector(`[data-section="${section}"]`);
-    if (targetNav) {
-      targetNav.classList.add('bg-blue-100', 'text-blue-700', 'border-blue-200');
-      targetNav.classList.remove('text-gray-700', 'hover:bg-gray-100');
-    }
+    if (targetNav) targetNav.classList.add('active');
 
     // Ocultar TODAS las secciones de contenido primero - incluyendo el dashboard
     const allSections = document.querySelectorAll('.content-section');
