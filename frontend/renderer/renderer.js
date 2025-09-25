@@ -82,7 +82,8 @@ class CiberSegApp {
   }
 
   setupButtonInteractions() {
-    const buttons = document.querySelectorAll('.btn-primary');
+    // Remove duplicate listeners - buttons with data-action are handled elsewhere
+    const buttons = document.querySelectorAll('.btn-primary:not([data-action])');
     buttons.forEach(button => {
       button.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -131,6 +132,10 @@ class CiberSegApp {
         break;
       case 'start-simulation':
         this.startSimulation();
+        break;
+      case 'config-simulation':
+        this.navigateToSection('simulation');
+        this.showNotification('Configuración de simulación abierta', 'info');
         break;
       case 'run-analysis':
         this.openForensicAnalysis();
