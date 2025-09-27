@@ -38,6 +38,7 @@ function createWindow() {
   // Ocultar la barra de menú para esta ventana explícitamente
   win.setMenuBarVisibility(false);
   
+  // Load the frontend HTML file
   win.loadFile(path.join(__dirname, '..', 'frontend', 'renderer', 'index.html'));
   
   win.once('ready-to-show', () => {
