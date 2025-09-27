@@ -101,6 +101,54 @@ class CiberSegApp {
     if (declineTermsBtn) {
       declineTermsBtn.addEventListener('click', () => this.declineTerms());
     }
+
+    // Password length slider
+    const passwordLengthSlider = document.getElementById('password-length');
+    const lengthValueDisplay = document.getElementById('length-value');
+    
+    if (passwordLengthSlider && lengthValueDisplay) {
+      passwordLengthSlider.addEventListener('input', (e) => {
+        lengthValueDisplay.textContent = e.target.value;
+      });
+    }
+
+    // Custom checkbox interactions
+    const checkboxes = document.querySelectorAll('.checkbox-toggle');
+    checkboxes.forEach(checkbox => {
+      const input = document.getElementById(checkbox.dataset.checkbox);
+      if (input) {
+        // Set initial state
+        if (input.checked) {
+          checkbox.classList.add('checked');
+        }
+        
+        // Handle click on custom checkbox
+        checkbox.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          input.checked = !input.checked;
+          if (input.checked) {
+            checkbox.classList.add('checked');
+          } else {
+            checkbox.classList.remove('checked');
+          }
+        });
+        
+        // Handle click on label
+        const label = checkbox.closest('label');
+        if (label) {
+          label.addEventListener('click', (e) => {
+            e.preventDefault();
+            input.checked = !input.checked;
+            if (input.checked) {
+              checkbox.classList.add('checked');
+            } else {
+              checkbox.classList.remove('checked');
+            }
+          });
+        }
+      }
+    });
   }
 
   setupButtonInteractions() {
@@ -164,6 +212,31 @@ class CiberSegApp {
         break;
       case 'open-tools':
         this.navigateToSection('settings');
+        break;
+      // Simplified password module actions
+      case 'copy-password':
+        this.copyPassword();
+        break;
+      case 'save-password':
+        this.saveGeneratedPassword();
+        break;
+      case 'view-vault':
+        this.viewVault();
+        break;
+      case 'add-to-vault':
+        this.addToVault();
+        break;
+      case 'apply-settings':
+        this.applyPasswordSettings();
+        break;
+      case 'export-vault':
+        this.exportVault();
+        break;
+      case 'import-vault':
+        this.importVault();
+        break;
+      case 'vault-settings':
+        this.openVaultSettings();
         break;
       default:
         this.showNotification(`Acción: ${action}`, 'info');
@@ -306,19 +379,189 @@ class CiberSegApp {
 
   async generateNewPassword() {
     try {
-      // Usar la funcionalidad real del backend
-      const result = await window.electronAPI.generatePassword({
-        length: 16,
-        includeSymbols: true,
-        includeNumbers: true
-      });
-      
-      this.showNotification(`Nueva contraseña generada (${result.strength}): ${result.password}`, 'success');
+      // Get current settings
+      const length = parseInt(document.getElementById('password-length')?.value || 16);
+      const includeUppercase = document.getElementById('include-uppercase')?.checked || true;
+      const includeLowercase = document.getElementById('include-lowercase')?.checked || true;
+      const includeNumbers = document.getElementById('include-numbers')?.checked || true;
+      const includeSymbols = document.getElementById('include-symbols')?.checked || true;
+
+      // Generate password based on settings
+      let charset = '';
+      if (includeLowercase) charset += 'abcdefghijklmnopqrstuvwxyz';
+      if (includeUppercase) charset += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      if (includeNumbers) charset += '0123456789';
+      if (includeSymbols) charset += '!@#$%^&*()_+-=[]{}|;:,.<>?';
+
+      if (charset === '') {
+        this.showNotification('Debe seleccionar al menos un tipo de carácter', 'warning');
+        return;
+      }
+
+      let password = '';
+      // Use crypto.getRandomValues if available for better randomness
+      if (window.crypto && window.crypto.getRandomValues) {
+        const array = new Uint32Array(length);
+        window.crypto.getRandomValues(array);
+        for (let i = 0; i < length; i++) {
+          password += charset.charAt(array[i] % charset.length);
+        }
+      } else {
+        // Fallback to Math.random
+        for (let i = 0; i < length; i++) {
+          password += charset.charAt(Math.floor(Math.random() * charset.length));
+        }
+      }
+
+      // Update display
+      const passwordElement = document.getElementById('last-generated-password');
+      if (passwordElement) {
+        passwordElement.textContent = password;
+      }
+
+      // Update dashboard password display
+      const dashboardPasswordDisplay = document.getElementById('dashboard-generated-password');
+      if (dashboardPasswordDisplay) {
+        dashboardPasswordDisplay.textContent = password;
+      }
+
+      // Enable save button
+      const saveButton = document.querySelector('[data-action="save-password"]');
+      if (saveButton) {
+        saveButton.disabled = false;
+        saveButton.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
+
+      // Store the current password for saving
+      this.currentGeneratedPassword = password;
+
+      // Update recent passwords
+      this.updateRecentPasswords(password);
+
+      this.showNotification(`Nueva contraseña generada (${length} caracteres)`, 'success');
     } catch (error) {
       console.error('Error al generar contraseña:', error);
-      // Fallback a la generación local
-      const password = this.generateSecurePassword();
-      this.showNotification(`Nueva contraseña generada: ${password}`, 'success');
+      this.showNotification('Error al generar contraseña', 'error');
+    }
+  }
+
+  saveGeneratedPassword() {
+    if (!this.currentGeneratedPassword) {
+      this.showNotification('No hay contraseña generada para guardar', 'warning');
+      return;
+    }
+
+    // Prompt for label/website
+    const label = prompt('¿Para qué sitio o servicio es esta contraseña?', '');
+    if (!label || label.trim() === '') {
+      this.showNotification('Debe especificar un nombre para la contraseña', 'warning');
+      return;
+    }
+
+    // Save to vault
+    const vaultItem = {
+      label: label.trim(),
+      password: this.currentGeneratedPassword,
+      createdAt: new Date().toISOString(),
+      strength: this.calculatePasswordStrength(this.currentGeneratedPassword)
+    };
+
+    const stored = JSON.parse(localStorage.getItem('password-vault') || '[]');
+    stored.push(vaultItem);
+    localStorage.setItem('password-vault', JSON.stringify(stored));
+
+    // Update vault info
+    localStorage.setItem('last-vault-activity', new Date().toISOString());
+    this.loadVaultCount();
+    this.loadPasswordList();
+
+    // Disable save button
+    const saveButton = document.querySelector('[data-action="save-password"]');
+    if (saveButton) {
+      saveButton.disabled = true;
+      saveButton.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+
+    this.showNotification(`Contraseña guardada para "${label}"`, 'success');
+  }
+
+  updateRecentPasswords(newPassword) {
+    // Get existing recent passwords from localStorage
+    let recentPasswords = JSON.parse(localStorage.getItem('recent-passwords') || '[]');
+    
+    // Check if the new password is already in the list (prevent duplicates)
+    if (recentPasswords.includes(newPassword)) {
+      return;
+    }
+    
+    // Add new password to the beginning
+    recentPasswords.unshift(newPassword);
+    
+    // Keep only the last 3 passwords
+    recentPasswords = recentPasswords.slice(0, 3);
+    
+    // Save back to localStorage
+    localStorage.setItem('recent-passwords', JSON.stringify(recentPasswords));
+    
+    // Update the display
+    const recentContainer = document.getElementById('recent-passwords');
+    if (recentContainer) {
+      recentContainer.innerHTML = '';
+      
+      recentPasswords.forEach((password, index) => {
+        const passwordDiv = document.createElement('div');
+        passwordDiv.className = 'text-xs font-mono bg-blue-50 px-2 py-1 rounded border border-blue-200 text-blue-800 cursor-pointer hover:bg-blue-100 transition-colors duration-200';
+        passwordDiv.textContent = password;
+        passwordDiv.title = 'Click para copiar';
+        passwordDiv.addEventListener('click', () => {
+          navigator.clipboard.writeText(password).then(() => {
+            this.showNotification('Contraseña copiada', 'success');
+          }).catch(() => {
+            this.showNotification('Error al copiar', 'error');
+          });
+        });
+        recentContainer.appendChild(passwordDiv);
+      });
+      
+      // Fill remaining slots with placeholder if needed
+      while (recentContainer.children.length < 3) {
+        const placeholderDiv = document.createElement('div');
+        placeholderDiv.className = 'text-xs font-mono bg-gray-50 px-2 py-1 rounded border text-gray-600 opacity-50';
+        placeholderDiv.textContent = 'No hay contraseñas generadas';
+        recentContainer.appendChild(placeholderDiv);
+      }
+    }
+  }
+
+  loadRecentPasswords() {
+    const recentPasswords = JSON.parse(localStorage.getItem('recent-passwords') || '[]');
+    const recentContainer = document.getElementById('recent-passwords');
+    
+    if (recentContainer && recentPasswords.length > 0) {
+      recentContainer.innerHTML = '';
+      
+      recentPasswords.forEach((password) => {
+        const passwordDiv = document.createElement('div');
+        passwordDiv.className = 'text-xs font-mono bg-blue-50 px-2 py-1 rounded border border-blue-200 text-blue-800 cursor-pointer hover:bg-blue-100 transition-colors duration-200';
+        passwordDiv.textContent = password;
+        passwordDiv.title = 'Click para copiar';
+        passwordDiv.addEventListener('click', () => {
+          navigator.clipboard.writeText(password).then(() => {
+            this.showNotification('Contraseña copiada', 'success');
+          }).catch(() => {
+            this.showNotification('Error al copiar', 'error');
+          });
+        });
+        recentContainer.appendChild(passwordDiv);
+      });
+      
+      // Fill remaining slots with placeholder if needed
+      while (recentContainer.children.length < 3) {
+        const placeholderDiv = document.createElement('div');
+        placeholderDiv.className = 'text-xs font-mono bg-gray-50 px-2 py-1 rounded border text-gray-600 opacity-50';
+        placeholderDiv.textContent = 'No hay contraseñas generadas';
+        recentContainer.appendChild(placeholderDiv);
+      }
     }
   }
 
@@ -397,6 +640,215 @@ class CiberSegApp {
 
   loadDashboardData() {
     // Placeholder para obtener datos reales desde el proceso principal via preload
+    this.loadVaultCount();
+    this.loadRecentPasswords();
+    this.loadPasswordList();
+  }
+
+  loadVaultCount() {
+    const stored = JSON.parse(localStorage.getItem('password-vault') || '[]');
+    const counter = document.getElementById('stored-count');
+    if (counter) {
+      counter.textContent = stored.length;
+    }
+    
+    // Update password strength statistics
+    this.updatePasswordStrengthStats(stored);
+    
+    // Update vault activity and storage info
+    this.updateVaultInfo();
+  }
+
+  updatePasswordStrengthStats(passwords) {
+    let strongCount = 0;
+    let mediumCount = 0;
+    let weakCount = 0;
+    
+    passwords.forEach(item => {
+      const strength = this.calculatePasswordStrength(item.password);
+      if (strength >= 80) {
+        strongCount++;
+      } else if (strength >= 50) {
+        mediumCount++;
+      } else {
+        weakCount++;
+      }
+    });
+    
+    const strongEl = document.getElementById('strong-count');
+    const mediumEl = document.getElementById('medium-count');
+    const weakEl = document.getElementById('weak-count');
+    
+    if (strongEl) strongEl.textContent = strongCount;
+    if (mediumEl) mediumEl.textContent = mediumCount;
+    if (weakEl) weakEl.textContent = weakCount;
+  }
+
+  calculatePasswordStrength(password) {
+    let score = 0;
+    
+    // Length bonus
+    if (password.length >= 12) score += 25;
+    else if (password.length >= 8) score += 15;
+    else if (password.length >= 6) score += 10;
+    
+    // Character variety
+    if (/[a-z]/.test(password)) score += 5;
+    if (/[A-Z]/.test(password)) score += 5;
+    if (/[0-9]/.test(password)) score += 5;
+    if (/[^A-Za-z0-9]/.test(password)) score += 10;
+    
+    // Pattern penalties
+    if (/(.)\1{2,}/.test(password)) score -= 10; // Repeated characters
+    if (/123|abc|qwe/i.test(password)) score -= 15; // Common patterns
+    
+    return Math.max(0, Math.min(100, score));
+  }
+
+  updateVaultInfo() {
+    const stored = JSON.parse(localStorage.getItem('password-vault') || '[]');
+    
+    // Update last activity
+    const lastActivity = localStorage.getItem('last-vault-activity');
+    const lastActivityEl = document.getElementById('last-vault-activity');
+    if (lastActivityEl) {
+      if (lastActivity) {
+        const date = new Date(lastActivity);
+        lastActivityEl.textContent = date.toLocaleString();
+      } else {
+        lastActivityEl.textContent = 'Nunca';
+      }
+    }
+    
+    // Update storage size
+    const storageSize = JSON.stringify(stored).length;
+    const storageEl = document.getElementById('vault-storage');
+    if (storageEl) {
+      if (storageSize < 1024) {
+        storageEl.textContent = `${storageSize} B`;
+      } else if (storageSize < 1024 * 1024) {
+        storageEl.textContent = `${(storageSize / 1024).toFixed(1)} KB`;
+      } else {
+        storageEl.textContent = `${(storageSize / (1024 * 1024)).toFixed(1)} MB`;
+      }
+    }
+  }
+
+  loadPasswordList() {
+    const stored = JSON.parse(localStorage.getItem('password-vault') || '[]');
+    const passwordListEl = document.getElementById('password-list');
+    const vaultSubtitleEl = document.getElementById('vault-subtitle');
+    
+    if (!passwordListEl) return;
+    
+    // Update subtitle
+    if (vaultSubtitleEl) {
+      vaultSubtitleEl.textContent = `(${Math.min(stored.length, 5)} de ${stored.length})`;
+    }
+    
+    // Find the inner container for password items
+    let innerContainer = passwordListEl.querySelector('.space-y-3');
+    if (!innerContainer) {
+      innerContainer = document.createElement('div');
+      innerContainer.className = 'space-y-3';
+      passwordListEl.appendChild(innerContainer);
+    }
+    
+    // Clear existing list
+    innerContainer.innerHTML = '';
+    
+    // Show first 5 passwords or placeholder if empty
+    const passwordsToShow = stored.slice(0, 5);
+    
+    if (passwordsToShow.length === 0) {
+      // Show placeholder
+      const placeholder = document.createElement('div');
+      placeholder.className = 'text-center p-8 text-gray-500';
+      placeholder.innerHTML = `
+        <i class="fas fa-vault text-4xl mb-4 text-gray-300"></i>
+        <p class="text-lg font-medium mb-2">No hay contraseñas guardadas</p>
+        <p class="text-sm">Agrega tu primera contraseña para comenzar</p>
+      `;
+      innerContainer.appendChild(placeholder);
+    } else {
+      // Show passwords
+      passwordsToShow.forEach((item, index) => {
+        const passwordItem = this.createPasswordItem(item, index);
+        innerContainer.appendChild(passwordItem);
+      });
+    }
+  }
+
+  createPasswordItem(item, index) {
+    const div = document.createElement('div');
+    div.className = 'p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors duration-200';
+    
+    // Get website info from label or generate default
+    const websiteInfo = this.getWebsiteInfo(item.label);
+    
+    div.innerHTML = `
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 ${websiteInfo.bgColor} rounded-lg flex items-center justify-center">
+            <i class="${websiteInfo.icon} ${websiteInfo.textColor} text-sm"></i>
+          </div>
+          <div>
+            <div class="font-medium text-gray-800">${websiteInfo.name}</div>
+            <div class="text-sm text-gray-500">${websiteInfo.domain}</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="text-xs font-mono bg-white px-2 py-1 rounded border">••••••••</div>
+          <button class="p-1 text-gray-400 hover:text-gray-600 transition-colors" title="Copiar" data-copy-password="${index}">
+            <i class="fas fa-copy text-sm"></i>
+          </button>
+        </div>
+      </div>
+    `;
+    
+    // Add copy functionality
+    const copyBtn = div.querySelector(`[data-copy-password="${index}"]`);
+    if (copyBtn) {
+      copyBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(item.password).then(() => {
+          this.showNotification('Contraseña copiada', 'success');
+        }).catch(() => {
+          this.showNotification('Error al copiar', 'error');
+        });
+      });
+    }
+    
+    return div;
+  }
+
+  getWebsiteInfo(label) {
+    // Simple website detection based on common patterns
+    const websites = {
+      'google': { name: 'Google', domain: 'google.com', icon: 'fas fa-globe', bgColor: 'bg-blue-100', textColor: 'text-blue-600' },
+      'outlook': { name: 'Outlook', domain: 'outlook.com', icon: 'fas fa-envelope', bgColor: 'bg-green-100', textColor: 'text-green-600' },
+      'amazon': { name: 'Amazon', domain: 'amazon.com', icon: 'fas fa-shopping-cart', bgColor: 'bg-purple-100', textColor: 'text-purple-600' },
+      'netflix': { name: 'Netflix', domain: 'netflix.com', icon: 'fas fa-video', bgColor: 'bg-red-100', textColor: 'text-red-600' },
+      'github': { name: 'GitHub', domain: 'github.com', icon: 'fas fa-code-branch', bgColor: 'bg-yellow-100', textColor: 'text-yellow-600' },
+      'facebook': { name: 'Facebook', domain: 'facebook.com', icon: 'fab fa-facebook', bgColor: 'bg-blue-100', textColor: 'text-blue-600' },
+      'twitter': { name: 'Twitter', domain: 'twitter.com', icon: 'fab fa-twitter', bgColor: 'bg-blue-100', textColor: 'text-blue-600' },
+      'instagram': { name: 'Instagram', domain: 'instagram.com', icon: 'fab fa-instagram', bgColor: 'bg-pink-100', textColor: 'text-pink-600' }
+    };
+    
+    const lowerLabel = label.toLowerCase();
+    for (const [key, info] of Object.entries(websites)) {
+      if (lowerLabel.includes(key)) {
+        return info;
+      }
+    }
+    
+    // Default fallback
+    return {
+      name: label,
+      domain: 'website.com',
+      icon: 'fas fa-globe',
+      bgColor: 'bg-gray-100',
+      textColor: 'text-gray-600'
+    };
   }
 
   showNotification(message, type = 'info') {
@@ -474,6 +926,130 @@ class CiberSegApp {
       info: 'fas fa-info-circle'
     };
     return icons[type] || icons.info;
+  }
+
+  // Simplified Password Module Methods
+  copyPassword() {
+    const passwordElement = document.getElementById('last-generated-password');
+    if (passwordElement && passwordElement.textContent !== '********************') {
+      navigator.clipboard.writeText(passwordElement.textContent).then(() => {
+        this.showNotification('Contraseña copiada al portapapeles', 'success');
+      }).catch(() => {
+        this.showNotification('Error al copiar la contraseña', 'error');
+      });
+    } else {
+      this.showNotification('No hay contraseña generada para copiar', 'warning');
+    }
+  }
+
+  viewVault() {
+    this.showNotification('Abriendo bóveda de contraseñas...', 'info');
+    // Future: Open vault interface
+  }
+
+  addToVault() {
+    const passwordElement = document.getElementById('last-generated-password');
+    if (passwordElement && passwordElement.textContent !== '********************') {
+      const password = passwordElement.textContent;
+      const label = prompt('Ingrese un nombre para esta contraseña:');
+      if (label) {
+        this.storePassword(label, password);
+        this.showNotification(`Contraseña "${label}" agregada a la bóveda`, 'success');
+      }
+    } else {
+      this.showNotification('No hay contraseña generada para agregar', 'warning');
+    }
+  }
+
+  storePassword(label, password) {
+    // Store in localStorage for now
+    const stored = JSON.parse(localStorage.getItem('password-vault') || '[]');
+    stored.push({ label, password, date: new Date().toISOString() });
+    localStorage.setItem('password-vault', JSON.stringify(stored));
+    
+    // Update last activity
+    localStorage.setItem('last-vault-activity', new Date().toISOString());
+    
+    // Update all vault info
+    this.loadVaultCount();
+    this.loadPasswordList();
+  }
+
+  importVault() {
+    // Create file input for importing
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const importData = JSON.parse(e.target.result);
+            if (importData.vault && Array.isArray(importData.vault)) {
+              const existing = JSON.parse(localStorage.getItem('password-vault') || '[]');
+              const merged = [...existing, ...importData.vault];
+              localStorage.setItem('password-vault', JSON.stringify(merged));
+              localStorage.setItem('last-vault-activity', new Date().toISOString());
+              this.loadVaultCount();
+              this.showNotification(`Importadas ${importData.vault.length} contraseñas`, 'success');
+            } else {
+              this.showNotification('Formato de archivo inválido', 'error');
+            }
+          } catch (error) {
+            this.showNotification('Error al importar archivo', 'error');
+          }
+        };
+        reader.readAsText(file);
+      }
+    };
+    input.click();
+  }
+
+  openVaultSettings() {
+    this.showNotification('Configuración de bóveda - Próximamente', 'info');
+    // Future: Open vault settings modal
+  }
+
+  applyPasswordSettings() {
+    const length = document.getElementById('password-length')?.value || 16;
+    const lengthValue = document.getElementById('length-value');
+    if (lengthValue) lengthValue.textContent = length;
+    
+    this.showNotification('Configuración guardada', 'success');
+  }
+
+  exportVault() {
+    const stored = JSON.parse(localStorage.getItem('password-vault') || '[]');
+    if (stored.length === 0) {
+      this.showNotification('No hay contraseñas para exportar', 'warning');
+      return;
+    }
+    
+    const exportData = {
+      vault: stored,
+      exportDate: new Date().toISOString(),
+      totalPasswords: stored.length,
+      version: '1.0'
+    };
+    
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    const url = URL.createObjectURL(dataBlob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `password-vault-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    
+    URL.revokeObjectURL(url);
+    
+    // Update last activity
+    localStorage.setItem('last-vault-activity', new Date().toISOString());
+    this.updateVaultInfo();
+    
+    this.showNotification('Bóveda exportada exitosamente', 'success');
   }
 
   // Terms and Conditions Methods
