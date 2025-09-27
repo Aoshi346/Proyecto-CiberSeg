@@ -2,6 +2,7 @@
 class CiberSegApp {
   constructor() {
     this.currentSection = 'dashboard';
+    this.termsAccepted = this.checkTermsAcceptance();
     this.init();
   }
 
@@ -9,6 +10,15 @@ class CiberSegApp {
     this.setupEventListeners();
     this.setupAnimations();
     this.loadDashboardData();
+    
+    // Always show terms modal for testing purposes
+    this.showTermsModal();
+    
+    // Show terms modal if not accepted (uncomment when done testing)
+    // if (!this.termsAccepted) {
+    //   this.showTermsModal();
+    // }
+    
     console.log('Aplicación CiberSeg inicializada exitosamente');
   }
 
@@ -79,6 +89,18 @@ class CiberSegApp {
         sidebar.classList.remove('open');
       }
     });
+
+    // Terms modal event listeners
+    const acceptTermsBtn = document.getElementById('accept-terms');
+    const declineTermsBtn = document.getElementById('decline-terms');
+    
+    if (acceptTermsBtn) {
+      acceptTermsBtn.addEventListener('click', () => this.acceptTerms());
+    }
+    
+    if (declineTermsBtn) {
+      declineTermsBtn.addEventListener('click', () => this.declineTerms());
+    }
   }
 
   setupButtonInteractions() {
@@ -452,6 +474,46 @@ class CiberSegApp {
       info: 'fas fa-info-circle'
     };
     return icons[type] || icons.info;
+  }
+
+  // Terms and Conditions Methods
+  checkTermsAcceptance() {
+    const accepted = localStorage.getItem('ciberseg-terms-accepted');
+    return accepted === 'true';
+  }
+
+  showTermsModal() {
+    document.body.classList.add('terms-pending');
+    const modal = document.getElementById('terms-modal');
+    if (modal) {
+      modal.classList.remove('hidden');
+    }
+  }
+
+  hideTermsModal() {
+    document.body.classList.remove('terms-pending');
+    const modal = document.getElementById('terms-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+    }
+  }
+
+  acceptTerms() {
+    localStorage.setItem('ciberseg-terms-accepted', 'true');
+    this.termsAccepted = true;
+    this.hideTermsModal();
+    this.showNotification('Términos y condiciones aceptados. ¡Bienvenido a CiberSeg!', 'success');
+  }
+
+  declineTerms() {
+    this.showNotification('Debe aceptar los términos y condiciones para usar la aplicación', 'warning');
+    // Optionally close the app or show a different message
+    setTimeout(() => {
+      if (confirm('¿Está seguro de que desea rechazar los términos? La aplicación se cerrará.')) {
+        // In a real Electron app, you would use window.close() or ipcRenderer
+        window.close();
+      }
+    }, 1000);
   }
 }
 

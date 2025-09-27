@@ -73,6 +73,60 @@
         transition: none; 
       } 
     }
+    
+    /* Terms Modal Styles */
+        
+    #terms-modal .modal-content {
+      animation: modalSlideIn 0.3s ease-out;
+    }
+    
+    @keyframes modalSlideIn {
+      from {
+        opacity: 0;
+        transform: scale(0.9) translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+    
+    /* Optimized scrolling for terms modal */
+    #terms-modal .overflow-y-auto {
+      scroll-behavior: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: #cbd5e0 #f7fafc;
+      overflow-anchor: none;
+      overscroll-behavior: contain;
+    }
+    
+    #terms-modal .overflow-y-auto::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    #terms-modal .overflow-y-auto::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    #terms-modal .overflow-y-auto::-webkit-scrollbar-thumb {
+      background: #cbd5e0;
+      border-radius: 4px;
+    }
+    
+    #terms-modal .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+      background: #a0aec0;
+    }
+    
+    /* Hide main content when terms modal is shown */
+    body.terms-pending .flex.h-screen {
+      filter: blur(2px);
+      pointer-events: none;
+    }
+    
+    body.terms-pending #terms-modal {
+      display: flex !important;
+    }
   </style>
 </head>
 
@@ -626,6 +680,74 @@
         </section>
       </div>
     </main>
+  </div>
+
+  <!-- Terms and Conditions Modal -->
+  <div id="terms-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden" style="will-change: transform;">
+      <!-- Modal Header -->
+      <div class="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-white bg-opacity-20 flex items-center justify-center">
+            <i class="fas fa-shield-alt text-white"></i>
+          </div>
+          <div>
+            <h2 class="text-xl font-semibold">Términos y Condiciones</h2>
+            <p class="text-blue-100 text-sm">CiberSeg Suite de Seguridad</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Modal Content -->
+      <div class="p-6 overflow-y-auto max-h-96" style="overflow-anchor: none;">
+        <div class="space-y-3 text-sm text-gray-700">
+          <div>
+            <h3 class="font-semibold text-gray-800 mb-1">1. Aceptación de Términos</h3>
+            <p>Al utilizar CiberSeg Suite de Seguridad, usted acepta cumplir con estos términos y condiciones.</p>
+          </div>
+          
+          <div>
+            <h3 class="font-semibold text-gray-800 mb-1">2. Uso Responsable</h3>
+            <p>Esta aplicación está diseñada para fines educativos y de seguridad legítimos. Utilícela de manera ética y responsable.</p>
+          </div>
+          
+          <div>
+            <h3 class="font-semibold text-gray-800 mb-1">3. Privacidad y Datos</h3>
+            <p>Los datos generados localmente permanecen en su dispositivo. No recopilamos información personal sin su consentimiento.</p>
+          </div>
+          
+          <div>
+            <h3 class="font-semibold text-gray-800 mb-1">4. Limitación de Responsabilidad</h3>
+            <p>Esta aplicación se proporciona "tal como está". No garantizamos resultados específicos.</p>
+          </div>
+          
+          <div>
+            <h3 class="font-semibold text-gray-800 mb-1">5. Modificaciones</h3>
+            <p>Nos reservamos el derecho de modificar estos términos en cualquier momento.</p>
+          </div>
+          
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div class="flex items-start gap-2">
+              <i class="fas fa-info-circle text-blue-600 mt-0.5"></i>
+              <div>
+                <h4 class="font-semibold text-blue-800 text-xs">Importante</h4>
+                <p class="text-blue-700 text-xs">Al hacer clic en "Aceptar", confirma que ha leído y acepta estos términos.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Modal Footer -->
+      <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3">
+        <button id="decline-terms" class="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors duration-200">
+          <i class="fas fa-times mr-2"></i>Rechazar
+        </button>
+        <button id="accept-terms" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-medium">
+          <i class="fas fa-check mr-2"></i>Aceptar Términos
+        </button>
+      </div>
+    </div>
   </div>
 
   <script src="renderer.js"></script>
