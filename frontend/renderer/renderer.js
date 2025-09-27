@@ -9,7 +9,7 @@ class CiberSegApp {
     this.setupEventListeners();
     this.setupAnimations();
     this.loadDashboardData();
-    console.log('CiberSeg Application initialized successfully');
+    console.log('Aplicación CiberSeg inicializada exitosamente');
   }
 
   setupEventListeners() {
@@ -82,7 +82,8 @@ class CiberSegApp {
   }
 
   setupButtonInteractions() {
-    const buttons = document.querySelectorAll('.btn-primary');
+    // Remove duplicate listeners - buttons with data-action are handled elsewhere
+    const buttons = document.querySelectorAll('.btn-primary:not([data-action])');
     buttons.forEach(button => {
       button.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -93,6 +94,15 @@ class CiberSegApp {
     // Navegación de la barra lateral: asegurar que los elementos de navegación con no data-section no fallen
     document.querySelectorAll('.nav-item').forEach(item => {
       if (!item.dataset.section) item.dataset.section = 'dashboard';
+      // Accesibilidad: activar con Enter/Espacio
+      item.setAttribute('tabindex', '0');
+      item.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          const section = item.dataset.section;
+          this.navigateToSection(section);
+        }
+      });
     });
   }
 
@@ -123,6 +133,10 @@ class CiberSegApp {
       case 'start-simulation':
         this.startSimulation();
         break;
+      case 'config-simulation':
+        this.navigateToSection('simulation');
+        this.showNotification('Configuración de simulación abierta', 'info');
+        break;
       case 'run-analysis':
         this.openForensicAnalysis();
         break;
@@ -135,32 +149,21 @@ class CiberSegApp {
   }
 
   navigateToSection(section) {
-    console.log(`Navigating to section: ${section}`);
+    console.log(`Navegando a la sección: ${section}`);
     
-    // Actualizar la navegación con el estado correcto de restablecimiento
-    document.querySelectorAll('.nav-item').forEach(item => {
-      // Remove all active states
-      item.classList.remove('bg-blue-100', 'text-blue-700', 'border-blue-200', 'border-blue-200');
-      // Reset to default states
-      item.classList.add('text-gray-700');
-      item.classList.remove('hover:bg-gray-100'); // Remove to allow proper hover
-    });
-    
-    // Set active state for target navigation
+    // Actualizar navegación con clases coherentes
+    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
     const targetNav = document.querySelector(`[data-section="${section}"]`);
-    if (targetNav) {
-      targetNav.classList.add('bg-blue-100', 'text-blue-700', 'border-blue-200');
-      targetNav.classList.remove('text-gray-700', 'hover:bg-gray-100');
-    }
+    if (targetNav) targetNav.classList.add('active');
 
     // Ocultar TODAS las secciones de contenido primero - incluyendo el dashboard
     const allSections = document.querySelectorAll('.content-section');
-    console.log(`Found ${allSections.length} sections to hide`);
+    console.log(`Encontradas ${allSections.length} secciones para ocultar`);
     allSections.forEach(sec => {
       sec.classList.add('hidden');
       sec.classList.remove('active');
       sec.style.display = 'none';
-      console.log(`Hiding section: ${sec.id}`);
+      console.log(`Ocultando sección: ${sec.id}`);
     });
 
     // Mostrar SOLO la sección objetivo
@@ -169,9 +172,9 @@ class CiberSegApp {
       targetSection.classList.remove('hidden');
       targetSection.classList.add('active');
       targetSection.style.display = 'block';
-      console.log(`Showing section: ${targetSection.id}`);
+      console.log(`Mostrando sección: ${targetSection.id}`);
     } else {
-      console.error(`Target section not found: ${section}-section`);
+      console.error(`Sección objetivo no encontrada: ${section}-section`);
     }
 
     // Actualizar el título de la página
@@ -219,7 +222,7 @@ class CiberSegApp {
   }
 
   openModule(module) {
-    console.log(`Opening module: ${module}`);
+    console.log(`Abriendo módulo: ${module}`);
     
     // Añadir estado de carga
     const moduleCard = document.querySelector(`[data-module="${module}"]`);
@@ -290,7 +293,7 @@ class CiberSegApp {
       
       this.showNotification(`Nueva contraseña generada (${result.strength}): ${result.password}`, 'success');
     } catch (error) {
-      console.error('Password generation error:', error);
+      console.error('Error al generar contraseña:', error);
       // Fallback a la generación local
       const password = this.generateSecurePassword();
       this.showNotification(`Nueva contraseña generada: ${password}`, 'success');
@@ -314,12 +317,12 @@ class CiberSegApp {
       // Para fines de demostración, analizar un archivo de muestra
       const result = await window.electronAPI.forensicAnalysis('sample-file.exe');
       
-      if (result.status === 'completed') {
+      if (result.status === 'completado') {
         this.showNotification(`Análisis completado. Archivo: ${result.fileType}, Sospechoso: ${result.suspicious ? 'Sí' : 'No'}`, 'success');
-        console.log('Forensic analysis result:', result);
+        console.log('Resultado del análisis forense:', result);
       }
     } catch (error) {
-      console.error('Forensic analysis error:', error);
+      console.error('Error en el análisis forense:', error);
       this.showNotification('Error en el análisis forense', 'error');
     }
   }

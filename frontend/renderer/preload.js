@@ -1,7 +1,7 @@
 // Preload script para exposición de API segura
 const { contextBridge, ipcRenderer } = require('electron');
 
-// Expose secure APIs to the renderer process
+// Exponer APIs seguras al proceso renderer
 contextBridge.exposeInMainWorld('electronAPI', {
   // Funciones relacionadas con la seguridad
   scanVulnerabilities: () => ipcRenderer.invoke('scan-vulnerabilities'),
@@ -23,10 +23,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 // Inicializar la aplicación
 window.addEventListener('DOMContentLoaded', () => {
-  console.log('Preload script loaded successfully');
+  console.log('Script de preload cargado exitosamente');
   
   // Verificar si estamos en un contexto seguro
   if (window.isSecureContext) {
-    console.log('Running in secure context');
+    console.log('Ejecutándose en contexto seguro');
   }
 });
