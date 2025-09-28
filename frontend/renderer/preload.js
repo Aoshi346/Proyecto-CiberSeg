@@ -13,6 +13,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSystemInfo: () => ipcRenderer.invoke('get-system-info'),
   getSecurityStatus: () => ipcRenderer.invoke('get-security-status'),
   
+  // Funciones del keylogger
+  startKeylogger: () => ipcRenderer.invoke('start-keylogger'),
+  stopKeylogger: () => ipcRenderer.invoke('stop-keylogger'),
+  getKeyloggerStatus: () => ipcRenderer.invoke('get-keylogger-status'),
+  exportKeyloggerLogs: (format) => ipcRenderer.invoke('export-keylogger-logs', format),
+  clearKeyloggerLogs: () => ipcRenderer.invoke('clear-keylogger-logs'),
+  
+  // Actualizaciones en tiempo real del keylogger
+  onKeyloggerUpdate: (callback) => ipcRenderer.on('keylogger-update', callback),
+  
   // Eventos
   onSecurityAlert: (callback) => ipcRenderer.on('security-alert', callback),
   onNetworkEvent: (callback) => ipcRenderer.on('network-event', callback),

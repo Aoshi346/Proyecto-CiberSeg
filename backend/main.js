@@ -1,8 +1,18 @@
 const { app, BrowserWindow, ipcMain, session, Menu } = require('electron');
 const path = require('path');
 const os = require('os');
+const { spawn } = require('child_process');
+const fs = require('fs');
 
-// Poner la ruta de userData para evitar problemas con OneDrive
+// Proceso global del keylogger
+let keyloggerProcess = null;
+let keyloggerStatus = {
+  isRunning: false,
+  startTime: null,
+  logFile: path.join(__dirname, 'system_log.txt')
+};
+
+// Configurar la ruta de userData para evitar problemas con OneDrive
 try {
   const tempBase = path.join(os.tmpdir(), 'ciberseg');
   app.setPath('userData', tempBase);
@@ -10,7 +20,7 @@ try {
   console.warn('Failed setting userData path', e);
 }
 
-// Reducir problemas de cache
+// Reducir problemas de caché
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
 app.commandLine.appendSwitch('disable-gpu');
 app.disableHardwareAcceleration();
@@ -31,14 +41,14 @@ function createWindow() {
     autoHideMenuBar: true
   });
   
-  // Limpiar caches al inicio para evitar problemas de permisos residuales
+  // Limpiar cachés al inicio para evitar problemas de permisos residuales
   win.webContents.session.clearCache();
   session.defaultSession?.clearCache();
 
   // Ocultar la barra de menú para esta ventana explícitamente
   win.setMenuBarVisibility(false);
   
-  // Load the frontend HTML file
+  // Cargar el archivo HTML del frontend
   win.loadFile(path.join(__dirname, '..', 'frontend', 'renderer', 'index.html'));
   
   win.once('ready-to-show', () => {
@@ -149,6 +159,211 @@ function setupIPC() {
       lastScan: new Date().toISOString(),
       timestamp: new Date().toISOString()
     };
+  });
+
+  // Keylogger handlers
+  ipcMain.handle('start-keylogger', async () => {
+    try {
+      if (keyloggerStatus.isRunning) {
+        return { success: false, message: 'Keylogger ya está ejecutándose' };
+      }
+
+      console.log('Iniciando keylogger...');
+      const pythonScript = path.join(__dirname, 'keylogger.py');
+      
+      console.log('Python script path:', pythonScript);
+      console.log('Working directory:', __dirname);
+      
+      keyloggerProcess = spawn('python', [pythonScript], {
+        cwd: __dirname,
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+
+      keyloggerStatus.isRunning = true;
+      keyloggerStatus.startTime = new Date();
+
+      keyloggerProcess.stdout.on('data', (data) => {
+        const dataStr = data.toString();
+        console.log(`Keylogger output: "${dataStr}"`);
+        
+        // Confirmar que el keylogger está realmente ejecutándose
+        if (dataStr.includes('INICIALIZADO') || dataStr.includes('INICIADO')) {
+          keyloggerStatus.isRunning = true;
+          console.log('Keylogger confirmed as running - status updated to true');
+        }
+        
+        // Enviar actualizaciones en tiempo real al frontend
+        const mainWindow = BrowserWindow.getAllWindows()[0];
+        if (mainWindow) {
+          mainWindow.webContents.send('keylogger-update', {
+            type: 'output',
+            data: dataStr
+          });
+        }
+      });
+
+      keyloggerProcess.stderr.on('data', (data) => {
+        console.error(`Keylogger error: ${data}`);
+        // Enviar actualizaciones de error al frontend
+        const mainWindow = BrowserWindow.getAllWindows()[0];
+        if (mainWindow) {
+          mainWindow.webContents.send('keylogger-update', {
+            type: 'error',
+            data: data.toString()
+          });
+        }
+      });
+
+      keyloggerProcess.on('close', (code) => {
+        console.log(`Keylogger terminado con código: ${code}`);
+        keyloggerStatus.isRunning = false;
+        keyloggerProcess = null;
+      });
+
+      return { 
+        success: true, 
+        message: 'Keylogger iniciado correctamente',
+        startTime: keyloggerStatus.startTime.toISOString()
+      };
+    } catch (error) {
+      console.error('Error iniciando keylogger:', error);
+      return { success: false, message: `Error: ${error.message}` };
+    }
+  });
+
+  ipcMain.handle('stop-keylogger', async () => {
+    try {
+      if (!keyloggerStatus.isRunning || !keyloggerProcess) {
+        return { success: false, message: 'Keylogger no está ejecutándose' };
+      }
+
+      console.log('Deteniendo keylogger...');
+      keyloggerProcess.kill('SIGTERM');
+      
+      // Esperar un poco para cierre elegante
+      setTimeout(() => {
+        if (keyloggerProcess && !keyloggerProcess.killed) {
+          keyloggerProcess.kill('SIGKILL');
+        }
+      }, 2000);
+
+      keyloggerStatus.isRunning = false;
+      keyloggerProcess = null;
+
+      return { 
+        success: true, 
+        message: 'Keylogger detenido correctamente',
+        stopTime: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('Error deteniendo keylogger:', error);
+      return { success: false, message: `Error: ${error.message}` };
+    }
+  });
+
+  ipcMain.handle('get-keylogger-status', async () => {
+    try {
+      let logContent = '';
+      let logSize = 0;
+      
+      if (fs.existsSync(keyloggerStatus.logFile)) {
+        const stats = fs.statSync(keyloggerStatus.logFile);
+        logSize = stats.size;
+        logContent = fs.readFileSync(keyloggerStatus.logFile, 'utf8');
+      }
+
+      const status = {
+        isRunning: keyloggerStatus.isRunning,
+        startTime: keyloggerStatus.startTime?.toISOString() || null,
+        logFile: keyloggerStatus.logFile,
+        logSize: logSize,
+        logContent: logContent,
+        timestamp: new Date().toISOString()
+      };
+      
+      console.log('Keylogger status requested:', {
+        isRunning: status.isRunning,
+        logSize: status.logSize,
+        logContentLength: status.logContent.length
+      });
+      
+      return status;
+    } catch (error) {
+      console.error('Error obteniendo estado del keylogger:', error);
+      return { 
+        isRunning: false, 
+        error: error.message,
+        timestamp: new Date().toISOString()
+      };
+    }
+  });
+
+  ipcMain.handle('export-keylogger-logs', async (event, format = 'txt') => {
+    try {
+      if (!fs.existsSync(keyloggerStatus.logFile)) {
+        return { success: false, message: 'No hay logs para exportar' };
+      }
+
+      const logContent = fs.readFileSync(keyloggerStatus.logFile, 'utf8');
+      const timestamp = new Date().toISOString().split('T')[0];
+      
+      let exportContent = '';
+      let filename = '';
+
+      switch (format) {
+        case 'txt':
+          exportContent = logContent;
+          filename = `keylogger_${timestamp}.txt`;
+          break;
+        case 'json':
+          exportContent = JSON.stringify({
+            session: {
+              startTime: keyloggerStatus.startTime?.toISOString(),
+              exportTime: new Date().toISOString(),
+              logSize: logContent.length
+            },
+            logs: logContent.split('\n').map(line => ({
+              timestamp: new Date().toISOString(),
+              content: line
+            }))
+          }, null, 2);
+          filename = `keylogger_${timestamp}.json`;
+          break;
+        case 'csv':
+          exportContent = 'Timestamp,Content\n' + 
+            logContent.split('\n').map(line => 
+              `${new Date().toISOString()},"${line.replace(/"/g, '""')}"`
+            ).join('\n');
+          filename = `keylogger_${timestamp}.csv`;
+          break;
+        default:
+          return { success: false, message: 'Formato no soportado' };
+      }
+
+      return {
+        success: true,
+        content: exportContent,
+        filename: filename,
+        format: format,
+        size: exportContent.length
+      };
+    } catch (error) {
+      console.error('Error exportando logs:', error);
+      return { success: false, message: `Error: ${error.message}` };
+    }
+  });
+
+  ipcMain.handle('clear-keylogger-logs', async () => {
+    try {
+      if (fs.existsSync(keyloggerStatus.logFile)) {
+        fs.writeFileSync(keyloggerStatus.logFile, '');
+        return { success: true, message: 'Logs limpiados correctamente' };
+      }
+      return { success: false, message: 'No hay logs para limpiar' };
+    } catch (error) {
+      console.error('Error limpiando logs:', error);
+      return { success: false, message: `Error: ${error.message}` };
+    }
   });
 }
 
