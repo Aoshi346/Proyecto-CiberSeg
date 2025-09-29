@@ -1,0 +1,22 @@
+# CiberSeg Antivirus Configuration
+# Copy this file to config.py and add your VirusTotal API key
+
+# VirusTotal API Configuration
+VIRUSTOTAL_API_KEY = "ab84f5f3146a5c18429112267f85a1007d64756dd1940efedaf7d2cf6466ca47"
+
+# Scan Configuration
+MAX_FILE_SIZE_MB = 32  # VirusTotal file size limit
+SCAN_TIMEOUT_SECONDS = 300  # 5 minutes timeout for scan results
+API_RATE_LIMIT_DELAY = 1  # Delay between API calls in seconds
+
+# Directory Configuration
+DEFAULT_SCAN_DIRECTORIES = [
+    "~/Downloads",
+    "~/Desktop", 
+    "~/Documents",
+    "~/Pictures"
+]
+
+# Logging Configuration
+LOG_LEVEL = "INFO"
+LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"

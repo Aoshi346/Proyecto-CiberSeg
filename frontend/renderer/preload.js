@@ -20,12 +20,68 @@ contextBridge.exposeInMainWorld('electronAPI', {
   exportKeyloggerLogs: (format) => ipcRenderer.invoke('export-keylogger-logs', format),
   clearKeyloggerLogs: () => ipcRenderer.invoke('clear-keylogger-logs'),
   
+  // Funciones del antivirus
+  startAntivirusScan: (scanType) => ipcRenderer.invoke('start-antivirus-scan', scanType),
+  stopAntivirusScan: () => ipcRenderer.invoke('stop-antivirus-scan'),
+  scanFile: (filePath) => ipcRenderer.invoke('scan-file', filePath),
+  scanFolders: (folderPaths) => ipcRenderer.invoke('scan-folders', folderPaths),
+  getAntivirusStatus: () => ipcRenderer.invoke('get-antivirus-status'),
+  getAntivirusStats: () => ipcRenderer.invoke('get-antivirus-stats'),
+  updateAntivirusDatabase: () => ipcRenderer.invoke('update-antivirus-database'),
+  
+  // Funciones del analizador forense
+  analyzeFile: (filePath, analysisType) => ipcRenderer.invoke('analyze-file', filePath, analysisType),
+  analyzeFolder: (folderPath, analysisType) => ipcRenderer.invoke('analyze-folder', folderPath, analysisType),
+  getFileHash: (filePath, hashType) => ipcRenderer.invoke('get-file-hash', filePath, hashType),
+  extractMetadata: (filePath) => ipcRenderer.invoke('extract-metadata', filePath),
+  detectMalware: (filePath) => ipcRenderer.invoke('detect-malware', filePath),
+  
+  // Antivirus Testing APIs
+  generateTestFiles: () => ipcRenderer.invoke('generate-test-files'),
+  testEicarDetection: () => ipcRenderer.invoke('test-eicar-detection'),
+  generateAdvancedTestFiles: () => ipcRenderer.invoke('generate-advanced-test-files'),
+  generateAggressiveTestFiles: () => ipcRenderer.invoke('generate-aggressive-test-files'),
+  testRealAntivirusDetection: () => ipcRenderer.invoke('test-real-antivirus-detection'),
+  diagnoseAntivirusStatus: () => ipcRenderer.invoke('diagnose-antivirus-status'),
+  scanFileWithVirusTotal: (filePath) => ipcRenderer.invoke('scan-file-with-virustotal', filePath),
+  generateRealMalwareTests: () => ipcRenderer.invoke('generate-real-malware-tests'),
+    comprehensiveAntivirusDiagnostic: () => ipcRenderer.invoke('comprehensive-antivirus-diagnostic'),
+    deleteThreats: () => ipcRenderer.invoke('delete-threats'),
+    clearThreatHistory: () => ipcRenderer.invoke('clear-threat-history'),
+  
+  // Funciones de análisis del sistema
+  fullSystemAnalysis: () => ipcRenderer.invoke('full-system-analysis'),
+  generateSystemReport: () => ipcRenderer.invoke('generate-system-report'),
+  getProcessList: () => ipcRenderer.invoke('get-process-list'),
+  getNetworkConnections: () => ipcRenderer.invoke('get-network-connections'),
+  
+  // Funciones de gestión de reportes
+  getAnalysisReports: () => ipcRenderer.invoke('get-analysis-reports'),
+  exportAnalysisReport: (reportId, format) => ipcRenderer.invoke('export-analysis-report', reportId, format),
+  clearAnalysisLogs: () => ipcRenderer.invoke('clear-analysis-logs'),
+  
   // Actualizaciones en tiempo real del keylogger
   onKeyloggerUpdate: (callback) => ipcRenderer.on('keylogger-update', callback),
+  
+  // Actualizaciones en tiempo real del antivirus
+  onAntivirusUpdate: (callback) => ipcRenderer.on('antivirus-update', callback),
+  onAntivirusProgress: (callback) => ipcRenderer.on('antivirus-progress', callback),
+  testProgress: () => ipcRenderer.invoke('test-progress'),
+  
+  // Actualizaciones en tiempo real del análisis
+  onAnalysisUpdate: (callback) => ipcRenderer.on('analysis-update', callback),
   
   // Eventos
   onSecurityAlert: (callback) => ipcRenderer.on('security-alert', callback),
   onNetworkEvent: (callback) => ipcRenderer.on('network-event', callback),
+  
+  // File operations
+  showOpenDialog: (options) => ipcRenderer.invoke('show-open-dialog', options),
+  showSaveDialog: (options) => ipcRenderer.invoke('show-save-dialog', options),
+  
+  // App data operations
+  getAppData: () => ipcRenderer.invoke('get-app-data'),
+  updateScanData: (scanData) => ipcRenderer.invoke('update-scan-data', scanData),
   
   // Eliminar eventos
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel)

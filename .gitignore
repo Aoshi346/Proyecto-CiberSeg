@@ -1,13 +1,93 @@
+# Dependencies
 node_modules/
-.DS_Store
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
 /dist/
 /build/
 /out/
 *.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+
+# IDE and Editor files
 .vscode/
-.git/
+.idea/
+*.swp
+*.swo
+*~
+
+# Coverage reports
 coverage/
+*.lcov
+
+# Environment variables and configuration files
 **/*.env
 **/.env.*
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Security and API keys
+backend/config.py
+backend/*.key
+backend/*.pem
+backend/*.p12
+backend/*.pfx
+**/secrets/
+**/keys/
+**/credentials/
+
+# Logs and temporary files
 **/*.txt
+logs/
+*.log
+*.tmp
+*.temp
+
+# Python specific
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.pytest_cache/
+
+# Electron specific
+app/
+packages/
+*.app
+*.dmg
+*.exe
+*.deb
+*.rpm
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# System files
+.git/
+.DS_Store

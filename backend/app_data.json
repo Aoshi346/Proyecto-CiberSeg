@@ -1,0 +1,90 @@
+{
+  "lastScanDate": null,
+  "scanHistory": [],
+  "totalScans": 0,
+  "totalFilesScanned": 0,
+  "totalThreatsFound": 0,
+  "lastAnalysis": {
+    "fileName": "malware_pattern_test.txt",
+    "timestamp": 1759182688135,
+    "filePath": "C:\\Users\\aoshi\\OneDrive\\Desktop\\Antivirus_Test_Files\\malware_pattern_test.txt",
+    "analysisResult": {
+      "success": true,
+      "filePath": "C:\\Users\\aoshi\\OneDrive\\Desktop\\Antivirus_Test_Files\\malware_pattern_test.txt",
+      "analysisType": "full",
+      "analysis": {
+        "basic": {
+          "name": "malware_pattern_test.txt",
+          "extension": ".txt",
+          "size": 76,
+          "sizeFormatted": "76 Bytes",
+          "type": "text",
+          "created": "2025-09-29T21:50:33.885Z",
+          "modified": "2025-09-29T21:50:33.885Z",
+          "accessed": "2025-09-29T21:50:33.885Z",
+          "permissions": "100666",
+          "isHidden": false,
+          "isExecutable": false
+        },
+        "hash": {
+          "md5": "f7c4e458fe145e0710e272ebd1a4193d",
+          "sha1": "49b562f76b566e8efd4528cbcf690b40cf3ecc02",
+          "sha256": "435a780aed5605e20e3a83eb6cebd9d3e8be9092e5f9873e8d9840f139c99349",
+          "sha512": "3c25537cefb516be5e272dd13439d165ee7376496a33f2511d7ca86041bc3706c66941dceb862bf0a8fde21e8a266dc85578fb4fac8511f25b2376ba58ab7c73"
+        },
+        "metadata": {
+          "basic": {
+            "name": "malware_pattern_test.txt",
+            "directory": "C:\\Users\\aoshi\\OneDrive\\Desktop\\Antivirus_Test_Files",
+            "extension": ".txt",
+            "size": 76,
+            "created": "2025-09-29T21:50:33.885Z",
+            "modified": "2025-09-29T21:50:33.885Z",
+            "accessed": "2025-09-29T21:50:33.885Z"
+          },
+          "extended": {
+            "document": {
+              "format": ".txt",
+              "hasMetadata": false,
+              "pages": 0,
+              "author": "unknown"
+            }
+          }
+        },
+        "content": {
+          "type": "text",
+          "encoding": "utf8",
+          "language": "unknown",
+          "lines": 1,
+          "words": 12,
+          "characters": 76,
+          "suspiciousPatterns": []
+        },
+        "security": {
+          "riskLevel": "high",
+          "threats": [
+            {
+              "type": "suspicious_name",
+              "severity": "high",
+              "description": "Nombre de archivo sospechoso"
+            }
+          ],
+          "vulnerabilities": [
+            {
+              "type": "permissive_permissions",
+              "severity": "medium",
+              "description": "Permisos demasiado permisivos"
+            }
+          ],
+          "recommendations": [
+            "Revisar inmediatamente este archivo",
+            "Considerar cuarentena del archivo",
+            "Restringir permisos del archivo"
+          ]
+        }
+      },
+      "timestamp": "2025-09-29T21:51:28.131Z",
+      "duration": 0
+    }
+  }
+}

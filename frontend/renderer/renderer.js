@@ -11,6 +11,8 @@ class CiberSegApp {
     this.setupAnimations();
     this.loadDashboardData();
     this.initializeKeylogger();
+    this.initializeAntivirusStats();
+    this.loadAppData();
     
     // Siempre mostrar modal de términos para propósitos de prueba
     this.showTermsModal();
@@ -150,6 +152,32 @@ class CiberSegApp {
         }
       }
     });
+
+    // Event listeners para botones de gestión de logs forenses
+    const forensicsClearBtn = document.getElementById('forensics-clear-log-btn');
+    const forensicsExportBtn = document.getElementById('forensics-export-btn');
+    
+    if (forensicsClearBtn) {
+      forensicsClearBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.clearForensicsLog();
+      });
+    }
+    
+    if (forensicsExportBtn) {
+      forensicsExportBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.exportForensicsResults();
+      });
+    }
+    
+
+    // Antivirus progress updates
+    if (window.electronAPI && window.electronAPI.onAntivirusProgress) {
+      window.electronAPI.onAntivirusProgress((event, progressData) => {
+        this.handleAntivirusProgress(progressData);
+      });
+    }
   }
 
   setupButtonInteractions() {
@@ -213,6 +241,74 @@ class CiberSegApp {
         break;
       case 'open-tools':
         this.navigateToSection('settings');
+        break;
+      // Antivirus actions
+      case 'start-antivirus-scan':
+        this.startAntivirusScan();
+        break;
+      case 'stop-antivirus-scan':
+        this.stopAntivirusScan();
+        break;
+      case 'scan-file':
+        this.scanFile();
+        break;
+      case 'antivirus-settings':
+        this.openAntivirusSettings();
+        break;
+      // File Analyzer actions
+      case 'analyze-file':
+        this.analyzeFile();
+        break;
+      case 'view-analysis-reports':
+        this.viewAnalysisReports();
+        break;
+      // System Analysis actions
+      case 'full-system-analysis':
+        this.fullSystemAnalysis();
+        break;
+      case 'system-report':
+        this.generateSystemReport();
+        break;
+      // Antivirus Testing actions
+      case 'generate-test-files':
+        this.generateTestFiles();
+        break;
+      case 'test-eicar-detection':
+        this.testEicarDetection();
+        break;
+      case 'generate-advanced-test-files':
+        this.generateAdvancedTestFiles();
+        break;
+      case 'generate-aggressive-test-files':
+        this.generateAggressiveTestFiles();
+        break;
+      case 'test-real-antivirus-detection':
+        this.testRealAntivirusDetection();
+        break;
+      case 'diagnose-antivirus-status':
+        this.diagnoseAntivirusStatus();
+        break;
+      case 'generate-real-malware-tests':
+        this.generateRealMalwareTests();
+        break;
+      case 'comprehensive-antivirus-diagnostic':
+        this.comprehensiveAntivirusDiagnostic();
+        break;
+      case 'delete-threats':
+        this.deleteThreats();
+        break;
+      case 'clear-threat-history':
+        this.clearThreatHistory();
+        break;
+      // Forensics log management
+      case 'forensics-clear-log':
+        this.clearForensicsLog();
+        break;
+      case 'forensics-export':
+        this.exportForensicsResults();
+        break;
+      case 'forensics-settings':
+        this.openForensicsSettings();
         break;
       // Acciones simplificadas del módulo de contraseñas
       case 'copy-password':
@@ -1499,6 +1595,2001 @@ class CiberSegApp {
     } catch (error) {
       console.error('Error exportando datos:', error);
       this.showNotification('Error exportando datos', 'error');
+    }
+  }
+
+  // ===== ANTIVIRUS FUNCTIONALITY =====
+  
+  async startAntivirusScan() {
+    // Open folder selector directly
+    this.openFolderSelector();
+  }
+
+  async stopAntivirusScan() {
+    try {
+      // Update button states
+      this.updateAntivirusButtonStates(false);
+      
+      // Call backend to stop scan
+      const result = await window.electronAPI.stopAntivirusScan();
+      
+      if (result.success) {
+        this.showNotification('Escaneo detenido exitosamente', 'info');
+        this.addForensicsLogEntry('Antivirus', '🛑 Escaneo detenido por el usuario', 'warning');
+        
+        // Clear progress display
+        this.clearProgressDisplay();
+      } else {
+        this.showNotification(result.message || 'Error deteniendo escaneo', 'error');
+      }
+    } catch (error) {
+      console.error('Error deteniendo escaneo:', error);
+      this.showNotification('No se pudo detener el escaneo. Intente nuevamente.', 'error');
+    }
+  }
+
+  updateAntivirusButtonStates(isScanning) {
+    const startBtn = document.querySelector('[data-action="start-antivirus-scan"]');
+    const stopBtn = document.querySelector('[data-action="stop-antivirus-scan"]');
+    
+    if (startBtn && stopBtn) {
+      if (isScanning) {
+        startBtn.disabled = true;
+        startBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        stopBtn.disabled = false;
+        stopBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      } else {
+        startBtn.disabled = false;
+        startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        stopBtn.disabled = true;
+        stopBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      }
+    }
+  }
+
+  clearProgressDisplay() {
+    const progressContainer = document.querySelector('.sticky-progress-container');
+    if (progressContainer) {
+      progressContainer.remove();
+    }
+    
+    // Reset scan progress
+    this.scanProgress = {
+      isScanning: false,
+      currentFile: 0,
+      totalFiles: 0,
+      percentage: 0,
+      startTime: null,
+      eta: null
+    };
+  }
+
+  showFolderSelectionDialog() {
+    const dialog = document.createElement('div');
+    dialog.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    dialog.innerHTML = `
+      <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Seleccionar Carpeta para Escanear</h3>
+        <div class="space-y-3">
+          <button data-folder="Downloads" class="w-full p-3 text-left bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200">
+            <i class="fas fa-download mr-2 text-blue-600"></i>
+            <span class="font-medium text-gray-900">Carpeta de Descargas</span>
+            <p class="text-sm text-gray-600">Escaneo rápido de archivos descargados</p>
+          </button>
+          <button data-folder="Desktop" class="w-full p-3 text-left bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200">
+            <i class="fas fa-desktop mr-2 text-blue-600"></i>
+            <span class="font-medium text-gray-900">Escritorio</span>
+            <p class="text-sm text-gray-600">Archivos en el escritorio</p>
+          </button>
+          <button data-folder="Documents" class="w-full p-3 text-left bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200">
+            <i class="fas fa-file-alt mr-2 text-blue-600"></i>
+            <span class="font-medium text-gray-900">Documentos</span>
+            <p class="text-sm text-gray-600">Carpeta de documentos</p>
+          </button>
+          <button data-folder="Custom" class="w-full p-3 text-left bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors border border-blue-200">
+            <i class="fas fa-folder-open mr-2 text-blue-600"></i>
+            <span class="font-medium text-gray-900">Seleccionar Carpeta Personalizada</span>
+            <p class="text-sm text-gray-600">Elegir cualquier carpeta del sistema</p>
+          </button>
+          <button data-folder="System" class="w-full p-3 text-left bg-red-50 rounded-lg hover:bg-red-100 transition-colors border border-red-200">
+            <i class="fas fa-shield-alt mr-2 text-red-600"></i>
+            <span class="font-medium text-gray-900">Escaneo Completo del Sistema</span>
+            <p class="text-sm text-gray-600">Escaneo completo (más lento)</p>
+          </button>
+        </div>
+        <div class="flex justify-end mt-6">
+          <button id="cancel-dialog" class="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    `;
+    
+    // Add event listeners
+    dialog.addEventListener('click', (e) => {
+      if (e.target.closest('[data-folder]')) {
+        const folderType = e.target.closest('[data-folder]').dataset.folder;
+        if (folderType === 'Custom') {
+          this.openFolderSelector();
+        } else {
+          this.scanSelectedFolder(folderType);
+        }
+      } else if (e.target.id === 'cancel-dialog') {
+        dialog.remove();
+      }
+    });
+    
+    document.body.appendChild(dialog);
+  }
+
+  async scanSelectedFolder(folderType) {
+    // Close dialog
+    const dialog = document.querySelector('.fixed.inset-0');
+    if (dialog) dialog.remove();
+    
+    try {
+      this.showNotification(`Iniciando escaneo de ${folderType}...`, 'info');
+      this.addForensicsLogEntry('Antivirus', `Iniciando escaneo de carpeta: ${folderType}`, 'info');
+      
+      // Set up progress tracking
+      this.scanProgress = {
+        isScanning: true,
+        currentFile: 0,
+        totalFiles: 0,
+        progressPercent: 0,
+        etaSeconds: null,
+        elapsedTime: 0,
+        startTime: Date.now(),
+        folderType: folderType
+      };
+      
+      // Update button states
+      this.updateAntivirusButtonStates(true);
+      
+      // Initialize stats display
+      this.updateAntivirusStats({
+        files_scanned: 0,
+        threats_found: 0,
+        total_files: 0
+      });
+      
+      this.updateTerminalProgress();
+      
+      // Add initial log entry
+      this.addForensicsLogEntry('Antivirus', `🚀 Iniciando escaneo de ${folderType}...`, 'info');
+      
+      let result;
+      if (folderType === 'System') {
+        result = await window.electronAPI.startAntivirusScan('full');
+      } else {
+        // Map folder types to actual paths (Windows)
+        const folderPaths = {
+          'Downloads': ['Downloads'],
+          'Desktop': ['Desktop'], 
+          'Documents': ['Documents']
+        };
+        
+        result = await window.electronAPI.scanFolders(folderPaths[folderType]);
+      }
+      
+      if (result.success) {
+        this.scanProgress.isScanning = false;
+        this.updateAntivirusStats(result);
+        this.addForensicsLogEntry('Antivirus', `Escaneo completado: ${result.files_scanned || 0} archivos, ${result.threats_found || 0} amenazas`, 'success');
+        
+        // Show appropriate notification based on threats found
+        if (result.threats_found > 0) {
+          this.showNotification(`⚠️ ${result.threats_found} amenaza(s) detectada(s)`, 'warning');
+        } else {
+          this.showNotification(`✅ Escaneo completado - Sistema limpio`, 'success');
+        }
+      } else {
+        this.scanProgress.isScanning = false;
+        this.addForensicsLogEntry('Antivirus', `Error: ${result.message}`, 'error');
+        this.showNotification(result.message, 'error');
+      }
+    } catch (error) {
+      this.scanProgress.isScanning = false;
+      this.updateAntivirusButtonStates(false);
+      this.addForensicsLogEntry('Antivirus', `Error: ${error.message}`, 'error');
+      this.showNotification('No se pudo iniciar el escaneo. Verifique que Python esté instalado correctamente.', 'error');
+    }
+  }
+
+  async openFolderSelector() {
+    try {
+      // Use Electron's dialog to select folder
+      const result = await window.electronAPI.showOpenDialog({
+        properties: ['openDirectory'],
+        title: 'Seleccionar Carpeta para Escanear'
+      });
+      
+      if (!result.canceled && result.filePaths.length > 0) {
+        const selectedFolder = result.filePaths[0];
+        this.showNotification(`Iniciando escaneo de carpeta personalizada...`, 'info');
+        this.addForensicsLogEntry('Antivirus', `Iniciando escaneo de carpeta personalizada: ${selectedFolder}`, 'info');
+        
+        // Set up progress tracking
+        this.scanProgress = {
+          isScanning: true,
+          currentFile: 0,
+          totalFiles: 0,
+          progressPercent: 0,
+          etaSeconds: null,
+          elapsedTime: 0,
+          startTime: Date.now(),
+          folderType: 'Personalizada'
+        };
+        
+        // Update button states
+        this.updateAntivirusButtonStates(true);
+        
+        // Initialize stats display
+        this.updateAntivirusStats({
+          files_scanned: 0,
+          threats_found: 0,
+          total_files: 0
+        });
+        
+        this.updateTerminalProgress();
+        
+        // Add initial log entry
+        this.addForensicsLogEntry('Antivirus', `🚀 Iniciando escaneo de carpeta personalizada...`, 'info');
+        
+        const scanResult = await window.electronAPI.scanFolders([selectedFolder]);
+        
+        if (scanResult.success) {
+          this.scanProgress.isScanning = false;
+          this.updateAntivirusStats(scanResult);
+          this.addForensicsLogEntry('Antivirus', `Escaneo completado: ${scanResult.files_scanned || 0} archivos, ${scanResult.threats_found || 0} amenazas`, 'success');
+          
+          // Show appropriate notification based on threats found
+          if (scanResult.threats_found > 0) {
+            this.showNotification(`⚠️ ${scanResult.threats_found} amenaza(s) detectada(s)`, 'warning');
+          } else {
+            this.showNotification(`✅ Escaneo completado - Sistema limpio`, 'success');
+          }
+        } else {
+          this.scanProgress.isScanning = false;
+          this.addForensicsLogEntry('Antivirus', `Error: ${scanResult.message}`, 'error');
+          this.showNotification(scanResult.message, 'error');
+        }
+      }
+    } catch (error) {
+      this.addForensicsLogEntry('Antivirus', `Error seleccionando carpeta: ${error.message}`, 'error');
+      this.showNotification('No se pudo abrir el selector de carpetas. Verifique los permisos del sistema.', 'error');
+    }
+  }
+
+  async scanFile() {
+    // Simular selección de archivo
+    this.showNotification('Funcionalidad de escaneo de archivo en desarrollo', 'info');
+    this.addForensicsLogEntry('Antivirus', 'Escaneo de archivo solicitado', 'info');
+  }
+
+  updateScanProgressDisplay() {
+    // This function is now handled by updateTerminalProgress()
+    // No separate floating progress card needed
+  }
+
+  formatTime(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds}s`;
+  }
+
+  updateTerminalProgress() {
+    const terminalLog = document.querySelector('#forensics-log-display');
+    
+    if (!terminalLog) {
+      setTimeout(() => this.updateTerminalProgress(), 100);
+      return;
+    }
+
+    // Create sticky progress bar container if it doesn't exist
+    let progressContainer = terminalLog.querySelector('.sticky-progress-container');
+    if (!progressContainer) {
+      progressContainer = document.createElement('div');
+      progressContainer.className = 'sticky-progress-container sticky top-0 z-10 bg-gray-800 border-b border-gray-600 mb-2';
+      terminalLog.insertBefore(progressContainer, terminalLog.firstChild);
+    }
+
+    // Create or update progress bar
+    let progressBar = progressContainer.querySelector('.scan-progress-bar');
+    if (!progressBar) {
+      progressBar = document.createElement('div');
+      progressBar.className = 'scan-progress-bar p-3 bg-gray-700 rounded text-gray-200 font-mono text-sm border border-gray-600';
+      progressContainer.appendChild(progressBar);
+    }
+
+    if (this.scanProgress && this.scanProgress.isScanning) {
+      const elapsed = Math.floor((Date.now() - this.scanProgress.startTime) / 1000);
+      const eta = this.scanProgress.etaSeconds ? this.formatTime(this.scanProgress.etaSeconds) : 'Calculando...';
+      
+      progressBar.innerHTML = `
+        <div class="flex justify-between items-center mb-2">
+          <span class="text-blue-400 font-semibold">🔍 Escaneo Antivirus - ${this.scanProgress.folderType || 'Sistema'}</span>
+          <span class="text-green-400 font-bold">${this.scanProgress.progressPercent}%</span>
+        </div>
+        <div class="w-full bg-gray-600 rounded-full h-3 mb-2">
+          <div class="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all duration-300" style="width: ${this.scanProgress.progressPercent}%"></div>
+        </div>
+        <div class="flex justify-between text-xs text-gray-400">
+          <span>📁 Archivo: ${this.scanProgress.currentFile}/${this.scanProgress.totalFiles}</span>
+          <span>⏱️ Tiempo: ${elapsed}s | ETA: ${eta}</span>
+        </div>
+        ${this.scanProgress.currentFileName ? `<div class="text-xs text-gray-300 truncate mt-1">📄 ${this.scanProgress.currentFileName}</div>` : ''}
+      `;
+      progressContainer.style.display = 'block';
+    } else {
+      progressContainer.style.display = 'none';
+    }
+  }
+
+  handleAntivirusProgress(progressData) {
+    // Handle scan stopped event
+    if (progressData.type === 'scan_stopped') {
+      this.updateAntivirusButtonStates(false);
+      this.clearProgressDisplay();
+      this.addForensicsLogEntry('Antivirus', progressData.message, 'warning');
+      return;
+    }
+
+    if (!this.scanProgress) {
+      this.scanProgress = {
+        isScanning: true,
+        currentFile: 0,
+        totalFiles: 0,
+        progressPercent: 0,
+        etaSeconds: null,
+        elapsedTime: 0,
+        startTime: Date.now(),
+        folderType: 'Unknown'
+      };
+    }
+
+    // Update progress data
+    if (progressData.data) {
+      if (progressData.data.current_file !== undefined) {
+        this.scanProgress.currentFile = progressData.data.current_file;
+      }
+      if (progressData.data.total_files !== undefined) {
+        this.scanProgress.totalFiles = progressData.data.total_files;
+      }
+      if (progressData.data.progress_percent !== undefined) {
+        this.scanProgress.progressPercent = progressData.data.progress_percent;
+      }
+      if (progressData.data.eta_seconds !== undefined) {
+        this.scanProgress.etaSeconds = progressData.data.eta_seconds;
+      }
+      if (progressData.data.file_name !== undefined) {
+        this.scanProgress.currentFileName = progressData.data.file_name;
+      }
+    }
+
+    // Update terminal progress display
+    this.updateTerminalProgress();
+
+    // Update stats in real-time during scanning
+    if (progressData.data && progressData.data.total_files) {
+      this.updateAntivirusStats({
+        files_scanned: progressData.data.current_file || 0,
+        threats_found: 0, // Will be updated when threats are found
+        total_files: progressData.data.total_files
+      });
+    }
+
+    // Add detailed log entries based on progress type
+    if (progressData.type === 'info') {
+      if (progressData.message.includes('Starting directory scan')) {
+        this.addForensicsLogEntry('Antivirus', `🚀 Iniciando escaneo de directorio: ${progressData.data.directory_path}`, 'info');
+      } else if (progressData.message.includes('Found') && progressData.message.includes('files to scan')) {
+        this.addForensicsLogEntry('Antivirus', `📁 Encontrados ${progressData.data.total_files} archivos para escanear`, 'info');
+        // Update total files count
+        this.updateAntivirusStats({
+          files_scanned: 0,
+          threats_found: 0,
+          total_files: progressData.data.total_files
+        });
+      } else if (progressData.message.includes('Scanning file') && progressData.data.file_name) {
+        this.addForensicsLogEntry('Antivirus', `🔍 [${progressData.data.current_file}/${progressData.data.total_files}] Escaneando: ${progressData.data.file_name}`, 'info');
+      } else if (progressData.message.includes('Calculating file hash')) {
+        this.addForensicsLogEntry('Antivirus', `📊 Calculando hash SHA-256 de ${progressData.data.file_name || 'archivo'}...`, 'info');
+      } else if (progressData.message.includes('Checking VirusTotal database')) {
+        this.addForensicsLogEntry('Antivirus', `🔍 Verificando base de datos VirusTotal...`, 'info');
+      } else if (progressData.message.includes('uploading for analysis')) {
+        this.addForensicsLogEntry('Antivirus', `⬆️ Subiendo ${progressData.data.file_name || 'archivo'} para análisis...`, 'info');
+      } else if (progressData.message.includes('Starting scan of') && progressData.message.includes('selected folders')) {
+        this.addForensicsLogEntry('Antivirus', `📂 Iniciando escaneo de ${progressData.data.folder_count} carpetas seleccionadas`, 'info');
+      } else if (progressData.message.includes('Scanning folder') && progressData.data.folder_path) {
+        this.addForensicsLogEntry('Antivirus', `📁 Escaneando carpeta ${progressData.data.current_folder}/${progressData.data.total_folders}: ${progressData.data.folder_path}`, 'info');
+      }
+    } else if (progressData.type === 'success') {
+      if (progressData.message.includes('File is clean')) {
+        this.addForensicsLogEntry('Antivirus', `✅ ${progressData.data.file_name || 'Archivo'} - SIN VIRUS`, 'success');
+      } else if (progressData.message.includes('clean after upload')) {
+        this.addForensicsLogEntry('Antivirus', `✅ ${progressData.data.file_name || 'Archivo'} - SIN VIRUS (después de subida)`, 'success');
+      } else if (progressData.message.includes('Directory scan completed')) {
+        this.addForensicsLogEntry('Antivirus', `🎉 Escaneo de directorio completado: ${progressData.data.files_scanned} archivos, ${progressData.data.threats_found} amenazas`, 'success');
+        // Reset button states when scan completes
+        this.updateAntivirusButtonStates(false);
+        this.clearProgressDisplay();
+        
+        // Save scan data
+        this.saveScanData({
+          filesScanned: progressData.data.files_scanned || 0,
+          threatsFound: progressData.data.threats_found || 0,
+          scanType: this.scanProgress?.folderType || 'unknown',
+          duration: this.scanProgress ? Date.now() - this.scanProgress.startTime : 0
+        });
+      } else if (progressData.message.includes('All folders scanned')) {
+        this.addForensicsLogEntry('Antivirus', `🎉 Todos los escaneos completados: ${progressData.data.total_files_scanned} archivos, ${progressData.data.total_threats_found} amenazas`, 'success');
+        // Reset button states when all scans complete
+        this.updateAntivirusButtonStates(false);
+        this.clearProgressDisplay();
+        
+        // Save scan data
+        this.saveScanData({
+          filesScanned: progressData.data.total_files_scanned || 0,
+          threatsFound: progressData.data.total_threats_found || 0,
+          scanType: this.scanProgress?.folderType || 'unknown',
+          duration: this.scanProgress ? Date.now() - this.scanProgress.startTime : 0
+        });
+      }
+    } else if (progressData.type === 'warning') {
+      if (progressData.data.threats) {
+        this.addForensicsLogEntry('Antivirus', `⚠️ ${progressData.data.file_name || 'Archivo'} - VIRUS DETECTADO: ${progressData.data.threats.join(', ')}`, 'warning');
+      }
+    } else if (progressData.type === 'error') {
+      // Don't show technical errors to users, show friendly messages instead
+      let friendlyMessage = 'Error durante el escaneo';
+      if (progressData.message.includes('Python script failed')) {
+        friendlyMessage = 'El escaneo se interrumpió. Verifique que Python esté instalado correctamente.';
+      } else if (progressData.message.includes('No module named')) {
+        friendlyMessage = 'Faltan dependencias de Python. Instale los módulos requeridos.';
+      } else if (progressData.message.includes('Permission denied')) {
+        friendlyMessage = 'Sin permisos para acceder a algunos archivos. Ejecute como administrador.';
+      }
+      
+      this.addForensicsLogEntry('Antivirus', `❌ ${friendlyMessage}`, 'error');
+    }
+  }
+
+  async testProgressCommunication() {
+    // Function removed - no longer needed
+  }
+
+  updateAntivirusStats(stats) {
+    const threatsCount = document.getElementById('antivirus-threats-count');
+    const scannedCount = document.getElementById('antivirus-scanned-count');
+    const lastScan = document.getElementById('antivirus-last-scan');
+    
+    // Update counts
+    if (threatsCount) {
+      threatsCount.textContent = stats.threats_found || 0;
+      // Add threat notification styling
+      if (stats.threats_found > 0) {
+        threatsCount.className = 'text-lg font-bold text-red-600 animate-pulse';
+        threatsCount.title = `⚠️ ${stats.threats_found} amenaza(s) detectada(s)`;
+      } else {
+        threatsCount.className = 'text-lg font-bold text-green-600';
+        threatsCount.title = '✅ Sistema limpio';
+      }
+    }
+    
+    if (scannedCount) {
+      scannedCount.textContent = stats.files_scanned || 0;
+      // Add file notification styling
+      if (stats.files_scanned > 0) {
+        scannedCount.className = 'text-lg font-bold text-blue-600';
+        scannedCount.title = `📁 ${stats.files_scanned} archivo(s) escaneado(s)`;
+      } else {
+        scannedCount.className = 'text-lg font-bold text-gray-600';
+        scannedCount.title = '📁 No hay archivos escaneados';
+      }
+    }
+    
+    // Update last scan with actual date and time
+    if (lastScan) {
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      const timeStr = now.toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      lastScan.textContent = `Último escaneo: ${dateStr} ${timeStr}`;
+      lastScan.title = `Escaneo completado el ${dateStr} a las ${timeStr}`;
+    }
+  }
+
+  initializeAntivirusStats() {
+    // Initialize with default values - only update last scan if it's still "Nunca"
+    const lastScan = document.getElementById('antivirus-last-scan');
+    if (lastScan && lastScan.textContent.includes('Nunca')) {
+      // Keep "Nunca" for initial state
+      return;
+    }
+    
+    // Initialize stats display
+    this.updateAntivirusStats({
+      files_scanned: 0,
+      threats_found: 0,
+      total_files: 0
+    });
+  }
+
+  async loadAppData() {
+    try {
+      const result = await window.electronAPI.getAppData();
+      if (result.success && result.data) {
+        this.appData = result.data;
+        
+        // Update antivirus stats with persistent data
+        if (this.appData.lastScanDate) {
+          this.updateLastScanDisplay(this.appData.lastScanDate);
+        }
+        
+        // Update total stats
+        this.updateAntivirusStats({
+          files_scanned: this.appData.totalFilesScanned || 0,
+          threats_found: this.appData.totalThreatsFound || 0,
+          total_files: this.appData.totalFilesScanned || 0
+        });
+        
+        // Update analyzer display with persistent data
+        if (this.appData.lastAnalysis) {
+          this.updateAnalyzerDisplay(this.appData.lastAnalysis);
+        }
+        
+        console.log('App data loaded:', this.appData);
+      }
+    } catch (error) {
+      console.error('Error loading app data:', error);
+    }
+  }
+
+  updateLastScanDisplay(lastScanDate) {
+    const lastScan = document.getElementById('antivirus-last-scan');
+    if (lastScan && lastScanDate) {
+      const date = new Date(lastScanDate);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      
+      let dateStr, timeStr;
+      if (diffDays === 0) {
+        dateStr = 'Hoy';
+      } else if (diffDays === 1) {
+        dateStr = 'Ayer';
+      } else if (diffDays < 7) {
+        dateStr = `Hace ${diffDays} días`;
+      } else {
+        dateStr = date.toLocaleDateString('es-ES');
+      }
+      
+      timeStr = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+      lastScan.textContent = `Último escaneo: ${dateStr} ${timeStr}`;
+      lastScan.title = `Escaneo completado el ${date.toLocaleDateString('es-ES')} a las ${timeStr}`;
+    }
+  }
+
+  async saveScanData(scanData) {
+    try {
+      const result = await window.electronAPI.updateScanData(scanData);
+      if (result.success) {
+        console.log('Scan data saved successfully');
+        // Update local app data
+        this.appData = { ...this.appData, ...scanData };
+        // Update the last scan display
+        this.updateLastScanDisplay(new Date().toISOString());
+      }
+    } catch (error) {
+      console.error('Error saving scan data:', error);
+    }
+  }
+  
+  async saveAnalysisData(analysisData) {
+    try {
+      const result = await window.electronAPI.updateScanData({ lastAnalysis: analysisData });
+      if (result.success) {
+        console.log('Analysis data saved successfully');
+        // Update local app data
+        this.appData = { ...this.appData, lastAnalysis: analysisData };
+      }
+    } catch (error) {
+      console.error('Error saving analysis data:', error);
+    }
+  }
+
+  // ===== FILE ANALYZER FUNCTIONALITY =====
+  
+  formatTimeAgo(timestamp) {
+    const now = Date.now();
+    const diff = now - timestamp;
+    
+    const minutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    
+    if (minutes < 1) {
+      return 'Hace un momento';
+    } else if (minutes < 60) {
+      return `Hace ${minutes} minuto${minutes > 1 ? 's' : ''}`;
+    } else if (hours < 24) {
+      return `Hace ${hours} hora${hours > 1 ? 's' : ''}`;
+    } else if (days < 7) {
+      return `Hace ${days} día${days > 1 ? 's' : ''}`;
+    } else {
+      const date = new Date(timestamp);
+      return date.toLocaleDateString('es-ES', { 
+        day: 'numeric', 
+        month: 'short', 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+    }
+  }
+
+  updateAnalyzerDisplay(lastAnalysis) {
+    const timeElement1 = document.getElementById('analyzer-last-scan-time');
+    const fileElement1 = document.getElementById('analyzer-last-scan-file');
+    const timeElement2 = document.getElementById('analyzer-last-scan-time-2');
+    const fileElement2 = document.getElementById('analyzer-last-scan-file-2');
+    
+    if (lastAnalysis) {
+      const fileName = lastAnalysis.fileName || 'Archivo analizado';
+      const timeAgo = this.formatTimeAgo(lastAnalysis.timestamp);
+      
+      if (timeElement1) timeElement1.textContent = timeAgo;
+      if (fileElement1) fileElement1.textContent = fileName;
+      if (timeElement2) timeElement2.textContent = timeAgo;
+      if (fileElement2) fileElement2.textContent = fileName;
+    } else {
+      if (timeElement1) timeElement1.textContent = 'Nunca';
+      if (fileElement1) fileElement1.textContent = 'No hay análisis realizados';
+      if (timeElement2) timeElement2.textContent = 'Nunca';
+      if (fileElement2) fileElement2.textContent = 'No hay análisis realizados';
+    }
+  }
+  
+  async analyzeFile() {
+    try {
+      // Open file dialog to select file
+      const result = await window.electronAPI.showOpenDialog({
+        properties: ['openFile'],
+        title: 'Seleccionar Archivo para Analizar',
+        filters: [
+          { name: 'Todos los archivos', extensions: ['*'] },
+          { name: 'Archivos comprimidos', extensions: ['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'cab', 'iso', 'dmg'] },
+          { name: 'Archivos ejecutables', extensions: ['exe', 'msi', 'dll', 'sys', 'scr', 'pif', 'com', 'bat', 'cmd'] },
+          { name: 'Documentos', extensions: ['pdf', 'doc', 'docx', 'txt', 'rtf', 'odt', 'xls', 'xlsx', 'ppt', 'pptx'] },
+          { name: 'Imágenes', extensions: ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp', 'svg', 'ico'] },
+          { name: 'Scripts', extensions: ['js', 'py', 'bat', 'cmd', 'ps1', 'vbs', 'sh', 'php', 'html', 'css'] },
+          { name: 'Archivos multimedia', extensions: ['mp3', 'mp4', 'avi', 'mkv', 'wav', 'flac', 'mov', 'wmv'] }
+        ]
+      });
+
+      if (!result.canceled && result.filePaths.length > 0) {
+        const selectedFile = result.filePaths[0];
+        
+        this.addForensicsLogEntry('Analizador', `🔍 Iniciando análisis de archivo: ${selectedFile}`, 'info');
+        this.showNotification('Analizando archivo...', 'info');
+        
+        // Call backend analyzer
+        const analysisResult = await window.electronAPI.analyzeFile(selectedFile, 'full');
+        
+        if (analysisResult.success) {
+          this.displayAnalysisResults(analysisResult);
+          
+          // Save analysis data and update display
+          const analysisData = {
+            fileName: selectedFile.split('\\').pop().split('/').pop(), // Extract filename from path
+            timestamp: Date.now(),
+            filePath: selectedFile,
+            analysisResult: analysisResult
+          };
+          
+          await this.saveAnalysisData(analysisData);
+          this.updateAnalyzerDisplay(analysisData);
+          
+          this.addForensicsLogEntry('Analizador', `✅ Análisis completado: ${analysisResult.analysis.basic.name}`, 'success');
+          this.showNotification('Análisis de archivo completado', 'success');
+        } else {
+          this.addForensicsLogEntry('Analizador', `❌ Error: ${analysisResult.message}`, 'error');
+          this.showNotification(analysisResult.message, 'error');
+        }
+      }
+    } catch (error) {
+      console.error('Error analizando archivo:', error);
+      this.addForensicsLogEntry('Analizador', `Error: ${error.message}`, 'error');
+      this.showNotification('No se pudo analizar el archivo. Verifique que el archivo existe y es accesible.', 'error');
+    }
+  }
+
+
+  displayAnalysisResults(analysisResult) {
+    const { analysis } = analysisResult;
+    
+    // Create detailed analysis display
+    let analysisText = `📁 Archivo: ${analysis.basic.name}\n`;
+    analysisText += `📊 Tamaño: ${analysis.basic.sizeFormatted}\n`;
+    analysisText += `📝 Tipo: ${analysis.basic.type}\n`;
+    analysisText += `📅 Creado: ${new Date(analysis.basic.created).toLocaleString('es-ES')}\n`;
+    analysisText += `📅 Modificado: ${new Date(analysis.basic.modified).toLocaleString('es-ES')}\n\n`;
+    
+    // Hash information
+    if (analysis.hash) {
+      analysisText += `🔐 HASHES:\n`;
+      analysisText += `MD5: ${analysis.hash.md5}\n`;
+      analysisText += `SHA1: ${analysis.hash.sha1}\n`;
+      analysisText += `SHA256: ${analysis.hash.sha256}\n\n`;
+    }
+    
+    // Security analysis
+    if (analysis.security) {
+      const riskColor = analysis.security.riskLevel === 'high' ? '🔴' : 
+                       analysis.security.riskLevel === 'medium' ? '🟡' : '🟢';
+      analysisText += `${riskColor} NIVEL DE RIESGO: ${analysis.security.riskLevel.toUpperCase()}\n`;
+      
+      if (analysis.security.threats && analysis.security.threats.length > 0) {
+        analysisText += `⚠️ AMENAZAS DETECTADAS:\n`;
+        analysis.security.threats.forEach(threat => {
+          analysisText += `- ${threat.description} (${threat.severity})\n`;
+        });
+        analysisText += `\n`;
+      }
+      
+      if (analysis.security.recommendations && analysis.security.recommendations.length > 0) {
+        analysisText += `💡 RECOMENDACIONES:\n`;
+        analysis.security.recommendations.forEach(rec => {
+          analysisText += `- ${rec}\n`;
+        });
+        analysisText += `\n`;
+      }
+    }
+    
+    // Content analysis
+    if (analysis.content) {
+      analysisText += `📄 ANÁLISIS DE CONTENIDO:\n`;
+      analysisText += `Líneas: ${analysis.content.lines}\n`;
+      analysisText += `Palabras: ${analysis.content.words}\n`;
+      analysisText += `Caracteres: ${analysis.content.characters}\n`;
+      
+      if (analysis.content.language && analysis.content.language !== 'unknown') {
+        analysisText += `Lenguaje: ${analysis.content.language}\n`;
+      }
+      
+      if (analysis.content.suspiciousPatterns && analysis.content.suspiciousPatterns.length > 0) {
+        analysisText += `🚨 PATRONES SOSPECHOSOS:\n`;
+        analysis.content.suspiciousPatterns.forEach(pattern => {
+          analysisText += `- ${pattern.description} (${pattern.count} ocurrencias)\n`;
+        });
+      }
+    }
+    
+    // Add to forensics log
+    this.addForensicsLogEntry('Analizador', analysisText, 'info');
+  }
+
+  viewAnalysisReports() {
+    this.showNotification('Visualización de reportes en desarrollo', 'info');
+    this.addForensicsLogEntry('Analizador', 'Visualización de reportes solicitada', 'info');
+  }
+
+  // ===== SYSTEM ANALYSIS FUNCTIONALITY =====
+  
+  async fullSystemAnalysis() {
+    try {
+      this.showNotification('Iniciando análisis completo del sistema...', 'info');
+      this.addForensicsLogEntry('Sistema', 'Iniciando análisis completo...', 'info');
+      
+      // Update button state
+      this.updateSystemAnalysisButtonState(true);
+      
+      const result = await window.electronAPI.fullSystemAnalysis();
+      
+      if (result.success) {
+        this.displaySystemAnalysisResults(result.analysis);
+        this.addForensicsLogEntry('Sistema', `Análisis completado en ${result.duration}ms`, 'success');
+        this.showNotification('Análisis completo del sistema finalizado', 'success');
+      } else {
+        this.addForensicsLogEntry('Sistema', `Error: ${result.message}`, 'error');
+        this.showNotification(result.message, 'error');
+      }
+    } catch (error) {
+      console.error('Error en análisis completo:', error);
+      this.addForensicsLogEntry('Sistema', `Error: ${error.message}`, 'error');
+      this.showNotification('Error en análisis completo del sistema', 'error');
+    } finally {
+      this.updateSystemAnalysisButtonState(false);
+    }
+  }
+
+
+  async generateSystemReport() {
+    try {
+      this.showNotification('Generando reporte del sistema...', 'info');
+      this.addForensicsLogEntry('Sistema', 'Generando reporte...', 'info');
+      
+      // Update button state
+      this.updateSystemAnalysisButtonState(true);
+      
+      const result = await window.electronAPI.generateSystemReport();
+      
+      if (result.success) {
+        this.displaySystemAnalysisResults(result.report.system);
+        this.addForensicsLogEntry('Sistema', `Reporte generado: ${result.fileName}`, 'success');
+        this.showNotification(`Reporte guardado en Escritorio: ${result.fileName}`, 'success');
+        
+        // Show detailed information section
+        this.showDetailedSystemInfo();
+      } else {
+        this.addForensicsLogEntry('Sistema', `Error: ${result.message}`, 'error');
+        this.showNotification(result.message, 'error');
+      }
+    } catch (error) {
+      console.error('Error generando reporte:', error);
+      this.addForensicsLogEntry('Sistema', `Error: ${error.message}`, 'error');
+      this.showNotification('Error generando reporte del sistema', 'error');
+    } finally {
+      this.updateSystemAnalysisButtonState(false);
+    }
+  }
+
+  displaySystemAnalysisResults(analysis) {
+    try {
+      // Update system status
+      this.updateSystemStatus(analysis);
+      
+      // Update system information
+      this.updateSystemInformation(analysis.system);
+      
+      // Update detailed system information
+      this.updateDetailedSystemInformation(analysis.system);
+      
+      // Update analysis indicators
+      this.updateAnalysisIndicators(analysis);
+      
+      // Update last analysis time
+      this.updateLastAnalysisTime();
+      
+      // Show detailed information section
+      this.showDetailedSystemInfo();
+      
+    } catch (error) {
+      console.error('Error displaying system analysis results:', error);
+    }
+  }
+
+  updateSystemStatus(analysis) {
+    const statusElement = document.getElementById('system-status');
+    const infoElement = document.getElementById('system-info');
+    
+    if (!statusElement || !infoElement) return;
+    
+    // Determine system status based on analysis
+    let status = 'Seguro';
+    let statusClass = 'bg-green-100 text-green-700';
+    let systemInfo = '';
+    
+    if (analysis.system) {
+      const platform = analysis.system.platform || 'Unknown';
+      const release = analysis.system.release || 'Unknown';
+      systemInfo = `${platform} ${release}`;
+    }
+    
+    // Check for security issues
+    if (analysis.security) {
+      if (analysis.security.firewall && analysis.security.firewall.status === 'disabled') {
+        status = 'Advertencia';
+        statusClass = 'bg-yellow-100 text-yellow-700';
+      }
+      
+      if (analysis.security.antivirus && analysis.security.antivirus.length === 0) {
+        status = 'Riesgo';
+        statusClass = 'bg-red-100 text-red-700';
+      }
+    }
+    
+    statusElement.textContent = status;
+    statusElement.className = `text-xs px-2 py-1 ${statusClass} rounded-full`;
+    infoElement.textContent = systemInfo || 'Información del sistema obtenida';
+  }
+
+  updateSystemInformation(systemInfo) {
+    if (!systemInfo) return;
+    
+    // Update system version info
+    const versionElement = document.getElementById('system-version-info');
+    if (versionElement) {
+      versionElement.textContent = systemInfo.release || 'No disponible';
+    }
+    
+    // Update platform info
+    const platformElement = document.getElementById('system-platform-info');
+    if (platformElement) {
+      const platform = systemInfo.platform || 'Unknown';
+      const arch = systemInfo.arch || 'Unknown';
+      platformElement.textContent = `${platform} ${arch}`;
+    }
+  }
+
+  updateAnalysisIndicators(analysis) {
+    // Update process indicator
+    const processesIcon = document.getElementById('processes-icon');
+    if (processesIcon && analysis.processes) {
+      processesIcon.className = 'fas fa-check-circle text-green-500 text-xs';
+    }
+    
+    // Update network indicator
+    const networkIcon = document.getElementById('network-icon');
+    if (networkIcon && analysis.network) {
+      networkIcon.className = 'fas fa-check-circle text-green-500 text-xs';
+    }
+    
+    // Update filesystem indicator
+    const tempfilesIcon = document.getElementById('tempfiles-icon');
+    if (tempfilesIcon && analysis.filesystem) {
+      tempfilesIcon.className = 'fas fa-check-circle text-green-500 text-xs';
+    }
+    
+    // Update registry indicator (always show as checked for Windows)
+    const registryIcon = document.getElementById('registry-icon');
+    if (registryIcon) {
+      registryIcon.className = 'fas fa-check-circle text-green-500 text-xs';
+    }
+  }
+
+  updateLastAnalysisTime() {
+    const lastAnalysisElement = document.getElementById('system-last-analysis');
+    if (lastAnalysisElement) {
+      const now = new Date();
+      lastAnalysisElement.textContent = now.toLocaleTimeString('es-ES', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+    }
+  }
+
+  updateSystemAnalysisButtonState(isAnalyzing) {
+    const buttons = document.querySelectorAll('[data-action="full-system-analysis"], [data-action="system-report"]');
+    buttons.forEach(button => {
+      button.disabled = isAnalyzing;
+      if (isAnalyzing) {
+        button.classList.add('opacity-50', 'cursor-not-allowed');
+      } else {
+        button.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
+    });
+  }
+
+  updateDetailedSystemInformation(systemInfo) {
+    if (!systemInfo) return;
+    
+    // Update OS Information
+    this.updateOSInformation(systemInfo);
+    
+    // Update Hardware Information
+    this.updateHardwareInformation(systemInfo);
+    
+    // Update Network Information
+    this.updateNetworkInformation(systemInfo);
+    
+    // Update Storage Information
+    this.updateStorageInformation(systemInfo);
+  }
+
+  updateOSInformation(systemInfo) {
+    // OS Name
+    const osNameElement = document.getElementById('os-name');
+    if (osNameElement && systemInfo.windowsInfo?.version?.caption) {
+      osNameElement.textContent = systemInfo.windowsInfo.version.caption;
+    } else if (osNameElement) {
+      osNameElement.textContent = `${systemInfo.platform} ${systemInfo.release}`;
+    }
+    
+    // OS Version
+    const osVersionElement = document.getElementById('os-version');
+    if (osVersionElement && systemInfo.windowsInfo?.version?.version) {
+      osVersionElement.textContent = systemInfo.windowsInfo.version.version;
+    } else if (osVersionElement) {
+      osVersionElement.textContent = systemInfo.release;
+    }
+    
+    // Architecture
+    const osArchElement = document.getElementById('os-arch');
+    if (osArchElement) {
+      osArchElement.textContent = systemInfo.arch;
+    }
+    
+    // Hostname
+    const osHostnameElement = document.getElementById('os-hostname');
+    if (osHostnameElement) {
+      osHostnameElement.textContent = systemInfo.hostname;
+    }
+  }
+
+  updateHardwareInformation(systemInfo) {
+    // CPU Model
+    const cpuModelElement = document.getElementById('cpu-model');
+    if (cpuModelElement && systemInfo.cpu?.model) {
+      cpuModelElement.textContent = systemInfo.cpu.model;
+    }
+    
+    // CPU Cores
+    const cpuCoresElement = document.getElementById('cpu-cores');
+    if (cpuCoresElement && systemInfo.cpu?.cores) {
+      cpuCoresElement.textContent = `${systemInfo.cpu.cores} núcleos`;
+    }
+    
+    // Memory Total
+    const memoryTotalElement = document.getElementById('memory-total');
+    if (memoryTotalElement && systemInfo.memory?.total) {
+      memoryTotalElement.textContent = this.formatBytes(systemInfo.memory.total);
+    }
+    
+    // Memory Free
+    const memoryFreeElement = document.getElementById('memory-free');
+    if (memoryFreeElement && systemInfo.memory?.free) {
+      memoryFreeElement.textContent = this.formatBytes(systemInfo.memory.free);
+    }
+  }
+
+  updateNetworkInformation(systemInfo) {
+    // WiFi Status
+    const wifiStatusElement = document.getElementById('wifi-status');
+    if (wifiStatusElement) {
+      const wifiInfo = systemInfo.windowsInfo?.wifi;
+      if (wifiInfo?.currentConnection?.ssid) {
+        wifiStatusElement.textContent = 'Conectado';
+        wifiStatusElement.className = 'font-medium text-green-600';
+      } else {
+        wifiStatusElement.textContent = 'Desconectado';
+        wifiStatusElement.className = 'font-medium text-red-600';
+      }
+    }
+    
+    // WiFi SSID
+    const wifiSSIDElement = document.getElementById('wifi-ssid');
+    if (wifiSSIDElement && systemInfo.windowsInfo?.wifi?.currentConnection?.ssid) {
+      wifiSSIDElement.textContent = systemInfo.windowsInfo.wifi.currentConnection.ssid;
+    } else if (wifiSSIDElement) {
+      wifiSSIDElement.textContent = 'No disponible';
+    }
+    
+    // WiFi Security
+    const wifiSecurityElement = document.getElementById('wifi-security');
+    if (wifiSecurityElement && systemInfo.windowsInfo?.wifi?.currentConnection?.authentication) {
+      const auth = systemInfo.windowsInfo.wifi.currentConnection.authentication;
+      wifiSecurityElement.textContent = auth;
+      wifiSecurityElement.className = auth.includes('WPA') || auth.includes('WPA2') || auth.includes('WPA3') ? 
+        'font-medium text-green-600' : 'font-medium text-yellow-600';
+    } else if (wifiSecurityElement) {
+      wifiSecurityElement.textContent = 'No disponible';
+    }
+    
+    // WiFi Signal
+    const wifiSignalElement = document.getElementById('wifi-signal');
+    if (wifiSignalElement && systemInfo.windowsInfo?.wifi?.currentConnection?.signal) {
+      wifiSignalElement.textContent = systemInfo.windowsInfo.wifi.currentConnection.signal;
+    } else if (wifiSignalElement) {
+      wifiSignalElement.textContent = 'No disponible';
+    }
+  }
+
+  updateStorageInformation(systemInfo) {
+    const diskInfoElement = document.getElementById('disk-info');
+    if (!diskInfoElement) return;
+    
+    const disks = systemInfo.windowsInfo?.disks;
+    if (disks && Array.isArray(disks)) {
+      diskInfoElement.innerHTML = '';
+      disks.forEach(disk => {
+        if (disk.caption && disk.size > 0) {
+          const diskDiv = document.createElement('div');
+          diskDiv.className = 'flex justify-between items-center';
+          
+          const totalGB = this.formatBytes(disk.size);
+          const freeGB = this.formatBytes(disk.freeSpace);
+          const usedGB = this.formatBytes(disk.size - disk.freeSpace);
+          const usagePercent = ((disk.size - disk.freeSpace) / disk.size * 100).toFixed(1);
+          
+          diskDiv.innerHTML = `
+            <span class="text-gray-600">${disk.caption} (${disk.volumeName || 'Sin nombre'}):</span>
+            <span class="font-medium">${usedGB} / ${totalGB} (${usagePercent}% usado)</span>
+          `;
+          
+          diskInfoElement.appendChild(diskDiv);
+        }
+      });
+    } else {
+      diskInfoElement.innerHTML = '<div class="text-gray-500">Información de disco no disponible</div>';
+    }
+  }
+
+  showDetailedSystemInfo() {
+    const detailedInfoElement = document.getElementById('detailed-system-info');
+    if (detailedInfoElement) {
+      detailedInfoElement.classList.remove('hidden');
+    }
+  }
+
+  formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  // ===== ANTIVIRUS TESTING FUNCTIONALITY =====
+  
+  async generateTestFiles() {
+    try {
+      this.showNotification('Generando archivos de prueba seguros...', 'info');
+      this.addForensicsLogEntry('Pruebas', 'Generando archivos de prueba...', 'info');
+      
+      const result = await window.electronAPI.generateTestFiles();
+      
+      if (result.success) {
+        this.addForensicsLogEntry('Pruebas', `Archivos de prueba generados: ${result.files.length} archivos`, 'success');
+        this.showNotification(`Archivos de prueba creados en OneDrive/Escritorio/Antivirus_Test_Files`, 'success');
+        
+        // Display test files information
+        this.displayTestFilesInfo(result.files);
+      } else {
+        this.addForensicsLogEntry('Pruebas', `Error: ${result.message}`, 'error');
+        this.showNotification(result.message, 'error');
+      }
+    } catch (error) {
+      console.error('Error generando archivos de prueba:', error);
+      this.addForensicsLogEntry('Pruebas', `Error: ${error.message}`, 'error');
+      this.showNotification('Error generando archivos de prueba', 'error');
+    }
+  }
+
+  async testEicarDetection() {
+    try {
+      this.showNotification('Probando detección EICAR...', 'info');
+      this.addForensicsLogEntry('Pruebas', 'Iniciando prueba EICAR...', 'info');
+      
+      const result = await window.electronAPI.testEicarDetection();
+      
+      if (result.detected) {
+        this.addForensicsLogEntry('Pruebas', '✅ EICAR detectado correctamente', 'success');
+        this.showNotification('✅ EICAR detectado - Antivirus funcionando correctamente', 'success');
+      } else {
+        this.addForensicsLogEntry('Pruebas', '⚠️ EICAR no detectado', 'warning');
+        this.showNotification('⚠️ EICAR no detectado - Revisar configuración del antivirus', 'warning');
+      }
+      
+      // Display detailed results
+      this.displayEicarTestResults(result);
+    } catch (error) {
+      console.error('Error probando EICAR:', error);
+      this.addForensicsLogEntry('Pruebas', `Error: ${error.message}`, 'error');
+      this.showNotification('Error probando detección EICAR', 'error');
+    }
+  }
+
+  displayTestFilesInfo(files) {
+    const logDisplay = document.getElementById('forensics-log-display');
+    if (!logDisplay) return;
+
+    // Add header
+    const headerDiv = document.createElement('div');
+    headerDiv.className = 'p-3 bg-yellow-50 rounded-lg border border-yellow-200 mb-2';
+    headerDiv.innerHTML = `
+      <h4 class="text-sm font-semibold text-yellow-800 mb-2">📁 Archivos de Prueba Generados</h4>
+      <p class="text-xs text-yellow-700 mb-2">Ubicación: OneDrive/Escritorio/Antivirus_Test_Files/</p>
+    `;
+    
+    // Insert after progress bar if exists, otherwise at the beginning
+    const progressBar = logDisplay.querySelector('.sticky-progress-container');
+    if (progressBar) {
+      progressBar.insertAdjacentElement('afterend', headerDiv);
+    } else {
+      logDisplay.insertBefore(headerDiv, logDisplay.firstChild);
+    }
+
+    // Add file details
+    files.forEach(file => {
+      const fileDiv = document.createElement('div');
+      fileDiv.className = 'p-2 bg-white rounded border border-gray-200 mb-1';
+      fileDiv.innerHTML = `
+        <div class="flex justify-between items-center">
+          <div>
+            <span class="text-sm font-medium text-gray-800">${file.name}</span>
+            <span class="text-xs text-gray-500 ml-2">(${file.type})</span>
+          </div>
+          <span class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">Seguro</span>
+        </div>
+        <p class="text-xs text-gray-600 mt-1">${file.description}</p>
+      `;
+      headerDiv.appendChild(fileDiv);
+    });
+  }
+
+  displayEicarTestResults(result) {
+    const logDisplay = document.getElementById('forensics-log-display');
+    if (!logDisplay) return;
+
+    const resultDiv = document.createElement('div');
+    resultDiv.className = `p-3 rounded-lg border mb-2 ${result.detected ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`;
+    resultDiv.innerHTML = `
+      <h4 class="text-sm font-semibold ${result.detected ? 'text-green-800' : 'text-yellow-800'} mb-2">
+        ${result.detected ? '✅ Prueba EICAR Exitosa' : '⚠️ Prueba EICAR Fallida'}
+      </h4>
+      <p class="text-xs ${result.detected ? 'text-green-700' : 'text-yellow-700'} mb-2">${result.details || result.message || 'Test completed'}</p>
+      ${result.detected ? 
+        '<p class="text-xs text-green-600">El antivirus detectó correctamente el archivo EICAR de prueba.</p>' :
+        '<p class="text-xs text-yellow-600">El antivirus no detectó el archivo EICAR. Esto puede indicar un problema de configuración.</p>'
+      }
+    `;
+    
+    // Insert after progress bar if exists, otherwise at the beginning
+    const progressBar = logDisplay.querySelector('.sticky-progress-container');
+    if (progressBar) {
+      progressBar.insertAdjacentElement('afterend', resultDiv);
+    } else {
+      logDisplay.insertBefore(resultDiv, logDisplay.firstChild);
+    }
+  }
+
+  async generateAdvancedTestFiles() {
+    try {
+      this.showNotification('Generando archivos de prueba avanzados...', 'info');
+      this.addForensicsLogEntry('Pruebas', 'Generando archivos de prueba avanzados...', 'info');
+      
+      const result = await window.electronAPI.generateAdvancedTestFiles();
+      
+      if (result.success) {
+        this.addForensicsLogEntry('Pruebas', `Archivos avanzados generados: ${result.files.length} archivos`, 'success');
+        this.showNotification(`Archivos avanzados creados - Más propensos a ser detectados`, 'success');
+        
+        // Display advanced test files information
+        this.displayAdvancedTestFilesInfo(result.files);
+      } else {
+        this.addForensicsLogEntry('Pruebas', `Error: ${result.message}`, 'error');
+        this.showNotification(result.message, 'error');
+      }
+    } catch (error) {
+      console.error('Error generando archivos avanzados:', error);
+      this.addForensicsLogEntry('Pruebas', `Error: ${error.message}`, 'error');
+      this.showNotification('Error generando archivos de prueba avanzados', 'error');
+    }
+  }
+
+  displayAdvancedTestFilesInfo(files) {
+    const logDisplay = document.getElementById('forensics-log-display');
+    if (!logDisplay) return;
+
+    // Add header
+    const headerDiv = document.createElement('div');
+    headerDiv.className = 'p-3 bg-red-50 rounded-lg border border-red-200 mb-2';
+    headerDiv.innerHTML = `
+      <h4 class="text-sm font-semibold text-red-800 mb-2">⚠️ Archivos de Prueba Avanzados</h4>
+      <p class="text-xs text-red-700 mb-2">Ubicación: OneDrive/Escritorio/Antivirus_Test_Files/</p>
+      <p class="text-xs text-red-600 mb-2">Estos archivos tienen mayor probabilidad de ser detectados por antivirus</p>
+    `;
+    
+    // Insert after progress bar if exists, otherwise at the beginning
+    const progressBar = logDisplay.querySelector('.sticky-progress-container');
+    if (progressBar) {
+      progressBar.insertAdjacentElement('afterend', headerDiv);
+    } else {
+      logDisplay.insertBefore(headerDiv, logDisplay.firstChild);
+    }
+
+    // Add file details
+    files.forEach(file => {
+      const fileDiv = document.createElement('div');
+      fileDiv.className = 'p-2 bg-white rounded border border-red-200 mb-1';
+      fileDiv.innerHTML = `
+        <div class="flex justify-between items-center">
+          <div>
+            <span class="text-sm font-medium text-gray-800">${file.name}</span>
+            <span class="text-xs text-gray-500 ml-2">(${file.type})</span>
+          </div>
+          <span class="text-xs px-2 py-1 bg-red-100 text-red-700 rounded-full">Alto Riesgo</span>
+        </div>
+        <p class="text-xs text-gray-600 mt-1">${file.description}</p>
+      `;
+      headerDiv.appendChild(fileDiv);
+    });
+  }
+
+  async generateAggressiveTestFiles() {
+    try {
+      this.showNotification('Generando pruebas agresivas...', 'info');
+      this.addForensicsLogEntry('Pruebas', 'Generando pruebas agresivas...', 'info');
+      
+      const result = await window.electronAPI.generateAggressiveTestFiles();
+      
+      if (result.success) {
+        this.addForensicsLogEntry('Pruebas', `Pruebas agresivas generadas: ${result.files.length} archivos`, 'success');
+        this.showNotification(`Pruebas agresivas creadas - MÁXIMA probabilidad de detección`, 'success');
+        
+        // Display aggressive test files information
+        this.displayAggressiveTestFilesInfo(result.files);
+      } else {
+        this.addForensicsLogEntry('Pruebas', `Error: ${result.message}`, 'error');
+        this.showNotification(result.message, 'error');
+      }
+    } catch (error) {
+      console.error('Error generando pruebas agresivas:', error);
+      this.addForensicsLogEntry('Pruebas', `Error: ${error.message}`, 'error');
+      this.showNotification('Error generando pruebas agresivas', 'error');
+    }
+  }
+
+  displayAggressiveTestFilesInfo(files) {
+    const logDisplay = document.getElementById('forensics-log-display');
+    if (!logDisplay) return;
+
+    // Add header
+    const headerDiv = document.createElement('div');
+    headerDiv.className = 'p-3 bg-purple-50 rounded-lg border border-purple-200 mb-2';
+    headerDiv.innerHTML = `
+      <h4 class="text-sm font-semibold text-purple-800 mb-2">💥 Pruebas Agresivas</h4>
+      <p class="text-xs text-purple-700 mb-2">Ubicación: OneDrive/Escritorio/Antivirus_Test_Files/</p>
+      <p class="text-xs text-purple-600 mb-2">⚠️ Estos archivos tienen MÁXIMA probabilidad de ser detectados</p>
+      <p class="text-xs text-purple-500 mb-2">Incluyen headers ejecutables, scripts de sistema y operaciones sospechosas</p>
+    `;
+    
+    // Insert after progress bar if exists, otherwise at the beginning
+    const progressBar = logDisplay.querySelector('.sticky-progress-container');
+    if (progressBar) {
+      progressBar.insertAdjacentElement('afterend', headerDiv);
+    } else {
+      logDisplay.insertBefore(headerDiv, logDisplay.firstChild);
+    }
+
+    // Add file details
+    files.forEach(file => {
+      const fileDiv = document.createElement('div');
+      fileDiv.className = 'p-2 bg-white rounded border border-purple-200 mb-1';
+      fileDiv.innerHTML = `
+        <div class="flex justify-between items-center">
+          <div>
+            <span class="text-sm font-medium text-gray-800">${file.name}</span>
+            <span class="text-xs text-gray-500 ml-2">(${file.type})</span>
+          </div>
+          <span class="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-full">MÁXIMO RIESGO</span>
+        </div>
+        <p class="text-xs text-gray-600 mt-1">${file.description}</p>
+      `;
+      headerDiv.appendChild(fileDiv);
+    });
+  }
+
+  async testRealAntivirusDetection() {
+    try {
+      this.showNotification('Iniciando prueba real de antivirus...', 'info');
+      this.addForensicsLogEntry('Pruebas', 'Iniciando prueba real de antivirus...', 'info');
+      
+      const result = await window.electronAPI.testRealAntivirusDetection();
+      
+      if (result.success) {
+        this.displayRealAntivirusTestResults(result.result);
+        this.addForensicsLogEntry('Pruebas', 'Prueba real completada', 'success');
+        this.showNotification('Prueba real de antivirus completada', 'success');
+      } else {
+        this.addForensicsLogEntry('Pruebas', `Error: ${result.message}`, 'error');
+        this.showNotification(result.message, 'error');
+      }
+    } catch (error) {
+      console.error('Error en prueba real:', error);
+      this.addForensicsLogEntry('Pruebas', `Error: ${error.message}`, 'error');
+      this.showNotification('Error en prueba real de antivirus', 'error');
+    }
+  }
+
+  displayRealAntivirusTestResults(results) {
+    const logDisplay = document.getElementById('forensics-log-display');
+    if (!logDisplay) return;
+
+    const resultDiv = document.createElement('div');
+    resultDiv.className = 'p-4 bg-gray-50 rounded-lg border border-gray-200 mb-2';
+    resultDiv.innerHTML = `
+      <h4 class="text-sm font-semibold text-gray-800 mb-3">🛡️ Resultados de Prueba Real de Antivirus</h4>
+      
+      <div class="space-y-3">
+        <!-- EICAR Test Results -->
+        <div class="p-3 rounded-lg ${results.eicarTest.detected ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium ${results.eicarTest.detected ? 'text-green-800' : 'text-red-800'}">Prueba EICAR</span>
+            <span class="text-xs px-2 py-1 rounded-full ${results.eicarTest.detected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+              ${results.eicarTest.detected ? '✅ Detectado' : '❌ No Detectado'}
+            </span>
+          </div>
+          <p class="text-xs ${results.eicarTest.detected ? 'text-green-700' : 'text-red-700'}">
+            ${results.eicarTest.detected ? 'El antivirus detectó y bloqueó el archivo EICAR' : 'El antivirus NO detectó el archivo EICAR'}
+          </p>
+        </div>
+        
+        <!-- Real-time Protection Results -->
+        <div class="p-3 rounded-lg ${results.realTimeTest.detected ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium ${results.realTimeTest.detected ? 'text-green-800' : 'text-red-800'}">Protección en Tiempo Real</span>
+            <span class="text-xs px-2 py-1 rounded-full ${results.realTimeTest.detected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+              ${results.realTimeTest.detected ? '✅ Bloqueado' : '❌ No Bloqueado'}
+            </span>
+          </div>
+          <p class="text-xs ${results.realTimeTest.detected ? 'text-green-700' : 'text-red-700'}">
+            ${results.realTimeTest.detected ? 'El antivirus bloqueó la ejecución del script sospechoso' : 'El antivirus NO bloqueó la ejecución del script'}
+          </p>
+        </div>
+        
+        <!-- Recommendations -->
+        <div class="p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <h5 class="text-sm font-medium text-blue-800 mb-2">📋 Recomendaciones:</h5>
+          <ul class="text-xs text-blue-700 space-y-1">
+            ${results.recommendations.map(rec => `<li>• ${rec}</li>`).join('')}
+          </ul>
+        </div>
+      </div>
+    `;
+    
+    // Insert after progress bar if exists, otherwise at the beginning
+    const progressBar = logDisplay.querySelector('.sticky-progress-container');
+    if (progressBar) {
+      progressBar.insertAdjacentElement('afterend', resultDiv);
+    } else {
+      logDisplay.insertBefore(resultDiv, logDisplay.firstChild);
+    }
+  }
+
+  async diagnoseAntivirusStatus() {
+    try {
+      this.showNotification('Diagnosticando estado del antivirus...', 'info');
+      this.addForensicsLogEntry('Diagnóstico', 'Iniciando diagnóstico del antivirus...', 'info');
+      
+      const result = await window.electronAPI.diagnoseAntivirusStatus();
+      
+      if (result.success) {
+        this.displayAntivirusDiagnosis(result.result);
+        this.addForensicsLogEntry('Diagnóstico', 'Diagnóstico completado', 'success');
+        this.showNotification('Diagnóstico del antivirus completado', 'success');
+      } else {
+        this.addForensicsLogEntry('Diagnóstico', `Error: ${result.message}`, 'error');
+        this.showNotification(result.message, 'error');
+      }
+    } catch (error) {
+      console.error('Error en diagnóstico:', error);
+      this.addForensicsLogEntry('Diagnóstico', `Error: ${error.message}`, 'error');
+      this.showNotification('Error en diagnóstico del antivirus', 'error');
+    }
+  }
+
+  displayAntivirusDiagnosis(diagnosis) {
+    const logDisplay = document.getElementById('forensics-log-display');
+    if (!logDisplay) return;
+
+    const resultDiv = document.createElement('div');
+    resultDiv.className = 'p-4 bg-blue-50 rounded-lg border border-blue-200 mb-2';
+    resultDiv.innerHTML = `
+      <h4 class="text-sm font-semibold text-blue-800 mb-3">🔍 Diagnóstico del Antivirus</h4>
+      
+      <div class="space-y-3">
+        <!-- Windows Defender Status -->
+        <div class="p-3 rounded-lg ${diagnosis.windowsDefender.enabled ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium ${diagnosis.windowsDefender.enabled ? 'text-green-800' : 'text-red-800'}">Windows Defender</span>
+            <span class="text-xs px-2 py-1 rounded-full ${diagnosis.windowsDefender.enabled ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+              ${diagnosis.windowsDefender.enabled ? '✅ Habilitado' : '❌ Deshabilitado'}
+            </span>
+          </div>
+          <p class="text-xs ${diagnosis.windowsDefender.enabled ? 'text-green-700' : 'text-red-700'}">
+            ${diagnosis.windowsDefender.enabled ? 
+              (diagnosis.windowsDefender.realTimeEnabled ? 'Protección en tiempo real habilitada' : 'Protección en tiempo real deshabilitada') :
+              'Windows Defender está deshabilitado'
+            }
+          </p>
+        </div>
+        
+        <!-- Antivirus Processes -->
+        <div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium text-gray-800">Procesos de Antivirus Detectados</span>
+            <span class="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded-full">
+              ${diagnosis.antivirusProcesses.length} proceso${diagnosis.antivirusProcesses.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          ${diagnosis.antivirusProcesses.length > 0 ? 
+            `<p class="text-xs text-gray-700">Procesos: ${diagnosis.antivirusProcesses.join(', ')}</p>` :
+            '<p class="text-xs text-gray-600">No se detectaron procesos de antivirus de terceros</p>'
+          }
+        </div>
+        
+        <!-- Recommendations -->
+        <div class="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+          <h5 class="text-sm font-medium text-yellow-800 mb-2">📋 Recomendaciones:</h5>
+          <ul class="text-xs text-yellow-700 space-y-1">
+            ${diagnosis.recommendations.map(rec => `<li>• ${rec}</li>`).join('')}
+          </ul>
+        </div>
+        
+        <!-- Manual Steps -->
+        <div class="p-3 bg-purple-50 rounded-lg border border-purple-200">
+          <h5 class="text-sm font-medium text-purple-800 mb-2">🛠️ Pasos Manuales Requeridos:</h5>
+          <ul class="text-xs text-purple-700 space-y-1">
+            <li>• Abrir Windows Security (Windows + I → Update & Security → Windows Security)</li>
+            <li>• Ir a "Virus & threat protection"</li>
+            <li>• Verificar que "Real-time protection" esté habilitado</li>
+            <li>• Verificar que "Cloud-delivered protection" esté habilitado</li>
+            <li>• Ejecutar "Quick scan" para verificar funcionamiento</li>
+          </ul>
+        </div>
+      </div>
+    `;
+    
+    // Insert after progress bar if exists, otherwise at the beginning
+    const progressBar = logDisplay.querySelector('.sticky-progress-container');
+    if (progressBar) {
+      progressBar.insertAdjacentElement('afterend', resultDiv);
+    } else {
+      logDisplay.insertBefore(resultDiv, logDisplay.firstChild);
+    }
+  }
+
+  async generateRealMalwareTests() {
+    try {
+      this.showNotification('Generando pruebas con firmas reales...', 'info');
+      this.addForensicsLogEntry('Pruebas', 'Generando pruebas con firmas reales...', 'info');
+      
+      const result = await window.electronAPI.generateRealMalwareTests();
+      
+      if (result.success) {
+        this.displayRealMalwareTestResults(result.result);
+        this.addForensicsLogEntry('Pruebas', 'Pruebas con firmas reales completadas', 'success');
+        this.showNotification('Pruebas con firmas reales completadas', 'success');
+      } else {
+        this.addForensicsLogEntry('Pruebas', `Error: ${result.message}`, 'error');
+        this.showNotification(result.message, 'error');
+      }
+    } catch (error) {
+      console.error('Error en pruebas con firmas reales:', error);
+      this.addForensicsLogEntry('Pruebas', `Error: ${error.message}`, 'error');
+      this.showNotification('Error en pruebas con firmas reales', 'error');
+    }
+  }
+
+  displayRealMalwareTestResults(results) {
+    const logDisplay = document.getElementById('forensics-log-display');
+    if (!logDisplay) return;
+
+    const resultDiv = document.createElement('div');
+    resultDiv.className = 'p-4 bg-emerald-50 rounded-lg border border-emerald-200 mb-2';
+    resultDiv.innerHTML = `
+      <h4 class="text-sm font-semibold text-emerald-800 mb-3">🦠 Pruebas con Firmas Reales</h4>
+      
+      <div class="space-y-3">
+        <!-- Files Created -->
+        <div class="p-3 bg-white rounded-lg border border-emerald-200">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium text-emerald-800">Archivos Creados</span>
+            <span class="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full">
+              ${results.filesCreated.length} archivo${results.filesCreated.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <div class="text-xs text-emerald-700">
+            ${results.filesCreated.map(file => `<div>• ${file}</div>`).join('')}
+          </div>
+        </div>
+        
+        <!-- Test Results -->
+        <div class="space-y-2">
+          ${results.testsPerformed.map(test => `
+            <div class="p-3 rounded-lg ${test.result === 'DETECTED' || test.result === 'BLOCKED' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-sm font-medium ${test.result === 'DETECTED' || test.result === 'BLOCKED' ? 'text-green-800' : 'text-red-800'}">${test.test}</span>
+                <span class="text-xs px-2 py-1 rounded-full ${test.result === 'DETECTED' || test.result === 'BLOCKED' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                  ${test.result === 'DETECTED' || test.result === 'BLOCKED' ? '✅ ' + test.result : '❌ ' + test.result}
+                </span>
+              </div>
+              <p class="text-xs ${test.result === 'DETECTED' || test.result === 'BLOCKED' ? 'text-green-700' : 'text-red-700'}">${test.details}</p>
+            </div>
+          `).join('')}
+        </div>
+        
+        <!-- Recommendations -->
+        <div class="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+          <h5 class="text-sm font-medium text-yellow-800 mb-2">📋 Recomendaciones:</h5>
+          <ul class="text-xs text-yellow-700 space-y-1">
+            ${results.recommendations.map(rec => `<li>• ${rec}</li>`).join('')}
+          </ul>
+        </div>
+        
+        <!-- Important Note -->
+        <div class="p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <h5 class="text-sm font-medium text-blue-800 mb-2">ℹ️ Información Importante:</h5>
+          <p class="text-xs text-blue-700">
+            Estas pruebas utilizan firmas y patrones reales de malware pero son completamente seguras. 
+            Si tu antivirus no detecta estos archivos, puede indicar problemas de configuración.
+          </p>
+        </div>
+      </div>
+    `;
+    
+    // Insert after progress bar if exists, otherwise at the beginning
+    const progressBar = logDisplay.querySelector('.sticky-progress-container');
+    if (progressBar) {
+      progressBar.insertAdjacentElement('afterend', resultDiv);
+    } else {
+      logDisplay.insertBefore(resultDiv, logDisplay.firstChild);
+    }
+  }
+
+  async comprehensiveAntivirusDiagnostic() {
+    try {
+      this.showNotification('Ejecutando diagnóstico completo del antivirus...', 'info');
+      this.addForensicsLogEntry('Diagnóstico', 'Iniciando diagnóstico completo del antivirus...', 'info');
+      
+      const result = await window.electronAPI.comprehensiveAntivirusDiagnostic();
+      
+      if (result.success) {
+        this.displayComprehensiveDiagnostic(result.result);
+        this.addForensicsLogEntry('Diagnóstico', 'Diagnóstico completo finalizado', 'success');
+        this.showNotification('Diagnóstico completo finalizado', 'success');
+      } else {
+        this.addForensicsLogEntry('Diagnóstico', `Error: ${result.message}`, 'error');
+        this.showNotification(result.message, 'error');
+      }
+    } catch (error) {
+      console.error('Error en diagnóstico completo:', error);
+      this.addForensicsLogEntry('Diagnóstico', `Error: ${error.message}`, 'error');
+      this.showNotification('Error en diagnóstico completo', 'error');
+    }
+  }
+
+  async deleteThreats() {
+    try {
+      this.showNotification('Eliminando amenazas detectadas...', 'info');
+      this.addForensicsLogEntry('Eliminación', 'Iniciando eliminación de amenazas...', 'info');
+      
+      const result = await window.electronAPI.deleteThreats();
+      
+      if (result.success) {
+        this.addForensicsLogEntry('Eliminación', result.message, 'success');
+        this.showNotification(result.message, 'success');
+        
+        // Display detailed results
+        this.displayThreatDeletionResults(result.details);
+        
+        // Update antivirus stats
+        this.updateAntivirusStats({
+          threatsFound: 0,
+          filesScanned: 0
+        });
+      } else {
+        this.addForensicsLogEntry('Eliminación', `Error: ${result.message}`, 'error');
+        this.showNotification(result.message, 'error');
+      }
+    } catch (error) {
+      console.error('Error eliminando amenazas:', error);
+      this.addForensicsLogEntry('Eliminación', `Error: ${error.message}`, 'error');
+      this.showNotification('Error eliminando amenazas', 'error');
+    }
+  }
+
+  async clearThreatHistory() {
+    try {
+      this.showNotification('Limpiando historial de amenazas...', 'info');
+      this.addForensicsLogEntry('Limpieza', 'Iniciando limpieza del historial de amenazas...', 'info');
+      
+      const result = await window.electronAPI.clearThreatHistory();
+      
+      if (result.success) {
+        this.addForensicsLogEntry('Limpieza', result.message, 'success');
+        this.showNotification(result.message, 'success');
+        
+        // Update the UI with new stats
+        this.updateAntivirusStats({
+          threatsFound: result.newStats.threatsFound,
+          filesScanned: result.newStats.filesScanned
+        });
+        
+        // Show detailed results
+        this.displayThreatHistoryClearedResults(result.newStats);
+      } else {
+        this.addForensicsLogEntry('Limpieza', `Error: ${result.message}`, 'error');
+        this.showNotification(result.message, 'error');
+      }
+    } catch (error) {
+      console.error('Error limpiando historial:', error);
+      this.addForensicsLogEntry('Limpieza', `Error: ${error.message}`, 'error');
+      this.showNotification('Error limpiando historial', 'error');
+    }
+  }
+
+  displayThreatDeletionResults(details) {
+    const logDisplay = document.getElementById('forensics-log-display');
+    if (!logDisplay) return;
+
+    const resultDiv = document.createElement('div');
+    resultDiv.className = 'p-4 bg-green-50 rounded-lg border border-green-200 mb-2';
+    resultDiv.innerHTML = `
+      <h4 class="text-sm font-semibold text-green-800 mb-3">🗑️ Resultados de Eliminación de Amenazas</h4>
+      
+      <div class="space-y-3">
+        <!-- Summary -->
+        <div class="p-3 bg-white rounded-lg border border-gray-200">
+          <h5 class="text-sm font-medium text-gray-800 mb-2">📊 Resumen:</h5>
+          <div class="text-xs text-gray-700 space-y-1">
+            <div>• Archivos eliminados: <span class="font-semibold text-green-600">${details.totalDeleted}</span></div>
+            ${details.errors.length > 0 ? `<div>• Errores: <span class="font-semibold text-red-600">${details.errors.length}</span></div>` : ''}
+          </div>
+        </div>
+        
+        <!-- Deleted Files -->
+        ${details.deletedFiles.length > 0 ? `
+          <div class="p-3 bg-white rounded-lg border border-gray-200">
+            <h5 class="text-sm font-medium text-gray-800 mb-2">✅ Archivos Eliminados:</h5>
+            <div class="text-xs text-gray-700 space-y-1 max-h-32 overflow-y-auto">
+              ${details.deletedFiles.map(file => `<div>• ${file}</div>`).join('')}
+            </div>
+          </div>
+        ` : ''}
+        
+        <!-- Errors -->
+        ${details.errors.length > 0 ? `
+          <div class="p-3 bg-red-50 rounded-lg border border-red-200">
+            <h5 class="text-sm font-medium text-red-800 mb-2">❌ Errores:</h5>
+            <div class="text-xs text-red-700 space-y-1">
+              ${details.errors.map(error => `<div>• ${error}</div>`).join('')}
+            </div>
+          </div>
+        ` : ''}
+        
+        <!-- Info -->
+        ${details.info ? `
+          <div class="p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <h5 class="text-sm font-medium text-blue-800 mb-2">ℹ️ Información:</h5>
+            <div class="text-xs text-blue-700">
+              ${details.info}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+    
+    // Insert after progress bar if exists, otherwise at the beginning
+    const progressBar = logDisplay.querySelector('.sticky-progress-container');
+    if (progressBar) {
+      progressBar.insertAdjacentElement('afterend', resultDiv);
+    } else {
+      logDisplay.insertBefore(resultDiv, logDisplay.firstChild);
+    }
+  }
+
+  displayComprehensiveDiagnostic(diagnostic) {
+    const logDisplay = document.getElementById('forensics-log-display');
+    if (!logDisplay) return;
+
+    const resultDiv = document.createElement('div');
+    resultDiv.className = 'p-4 bg-red-50 rounded-lg border border-red-200 mb-2';
+    resultDiv.innerHTML = `
+      <h4 class="text-sm font-semibold text-red-800 mb-3">🔍 Diagnóstico Completo del Antivirus</h4>
+      
+      <div class="space-y-3">
+        <!-- Critical Issues -->
+        ${diagnostic.criticalIssues.length > 0 ? `
+          <div class="p-3 bg-red-100 rounded-lg border border-red-300">
+            <h5 class="text-sm font-medium text-red-800 mb-2">🚨 Problemas Críticos:</h5>
+            <ul class="text-xs text-red-700 space-y-1">
+              ${diagnostic.criticalIssues.map(issue => `<li>• ${issue}</li>`).join('')}
+            </ul>
+          </div>
+        ` : ''}
+        
+        <!-- Windows Defender Status -->
+        <div class="p-3 bg-white rounded-lg border border-gray-200">
+          <h5 class="text-sm font-medium text-gray-800 mb-2">🛡️ Estado de Windows Defender:</h5>
+          <div class="text-xs text-gray-700 space-y-1">
+            <div>• Antivirus: ${diagnostic.windowsDefenderStatus.antivirusEnabled ? '✅ Habilitado' : '❌ Deshabilitado'}</div>
+            <div>• Protección en Tiempo Real: ${diagnostic.windowsDefenderStatus.realTimeEnabled ? '✅ Habilitada' : '❌ Deshabilitada'}</div>
+            <div>• Protección de Acceso: ${diagnostic.windowsDefenderStatus.onAccessEnabled ? '✅ Habilitada' : '❌ Deshabilitada'}</div>
+            <div>• Protección en la Nube: ${diagnostic.windowsDefenderStatus.cloudEnabled ? '✅ Habilitada' : '❌ Deshabilitada'}</div>
+          </div>
+        </div>
+        
+        <!-- Service Status -->
+        <div class="p-3 bg-white rounded-lg border border-gray-200">
+          <h5 class="text-sm font-medium text-gray-800 mb-2">⚙️ Estado del Servicio:</h5>
+          <div class="text-xs text-gray-700 space-y-1">
+            <div>• Estado: ${diagnostic.serviceStatus.status === 'Running' ? '✅ Ejecutándose' : '❌ Detenido'}</div>
+            <div>• Tipo de Inicio: ${diagnostic.serviceStatus.startType === 'Automatic' ? '✅ Automático' : '❌ Manual'}</div>
+          </div>
+        </div>
+        
+        <!-- Test Results -->
+        <div class="p-3 bg-white rounded-lg border border-gray-200">
+          <h5 class="text-sm font-medium text-gray-800 mb-2">🧪 Resultados de Pruebas EICAR:</h5>
+          <div class="text-xs text-gray-700 space-y-1">
+            ${Object.entries(diagnostic.testResults).map(([location, result]) => `
+              <div class="flex justify-between items-center">
+                <span>${location}:</span>
+                <span class="${result.detected ? 'text-green-600' : 'text-red-600'}">
+                  ${result.detected ? '✅ Detectado' : '❌ No Detectado'}
+                </span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        
+        <!-- Third-party Antivirus -->
+        ${diagnostic.thirdPartyAntivirus.length > 0 ? `
+          <div class="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+            <h5 class="text-sm font-medium text-yellow-800 mb-2">⚠️ Antivirus de Terceros Detectado:</h5>
+            <div class="text-xs text-yellow-700">
+              ${diagnostic.thirdPartyAntivirus.map(av => `<div>• ${av}</div>`).join('')}
+            </div>
+          </div>
+        ` : ''}
+        
+        <!-- Exclusions -->
+        <div class="p-3 bg-white rounded-lg border border-gray-200">
+          <h5 class="text-sm font-medium text-gray-800 mb-2">🚫 Exclusiones:</h5>
+          <div class="text-xs text-gray-700">
+            ${diagnostic.exclusions.paths || 'No se pudieron verificar las exclusiones'}
+          </div>
+        </div>
+        
+        <!-- Recommendations -->
+        <div class="p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <h5 class="text-sm font-medium text-blue-800 mb-2">📋 Recomendaciones:</h5>
+          <ul class="text-xs text-blue-700 space-y-1">
+            ${diagnostic.recommendations.map(rec => `<li>• ${rec}</li>`).join('')}
+          </ul>
+        </div>
+        
+        <!-- Action Steps -->
+        <div class="p-3 bg-purple-50 rounded-lg border border-purple-200">
+          <h5 class="text-sm font-medium text-purple-800 mb-2">🛠️ Pasos de Acción:</h5>
+          <ul class="text-xs text-purple-700 space-y-1">
+            <li>• Abrir Windows Security (Windows + I → Update & Security → Windows Security)</li>
+            <li>• Ir a "Virus & threat protection"</li>
+            <li>• Verificar que todas las protecciones estén habilitadas</li>
+            <li>• Revisar "Exclusions" y eliminar exclusiones innecesarias</li>
+            <li>• Ejecutar "Quick scan" para verificar funcionamiento</li>
+            <li>• Si persisten problemas, ejecutar "Windows Defender Offline scan"</li>
+          </ul>
+        </div>
+      </div>
+    `;
+    
+    // Insert after progress bar if exists, otherwise at the beginning
+    const progressBar = logDisplay.querySelector('.sticky-progress-container');
+    if (progressBar) {
+      progressBar.insertAdjacentElement('afterend', resultDiv);
+    } else {
+      logDisplay.insertBefore(resultDiv, logDisplay.firstChild);
+    }
+  }
+
+  // ===== FORENSICS LOG MANAGEMENT =====
+  
+  addForensicsLogEntry(category, message, type = 'info') {
+    const logDisplay = document.getElementById('forensics-log-display');
+    if (!logDisplay) return;
+
+    // Limpiar mensaje de "no hay análisis" si existe
+    if (logDisplay.innerHTML.includes('No hay análisis realizados')) {
+      logDisplay.innerHTML = '';
+    }
+
+    const timestamp = new Date().toLocaleTimeString();
+    const logEntry = document.createElement('div');
+    logEntry.className = 'mb-1 text-xs px-1 py-0.5 hover:bg-gray-700 rounded transition-colors duration-150';
+    
+    const typeColors = {
+      info: 'text-blue-400',
+      success: 'text-green-400',
+      warning: 'text-yellow-400',
+      error: 'text-red-400'
+    };
+    
+    logEntry.innerHTML = `
+      <span class="text-gray-500">[${timestamp}]</span> 
+      <span class="font-semibold text-purple-400">[${category}]</span> 
+      <span class="${typeColors[type] || 'text-gray-400'}">${message}</span>
+    `;
+    
+    // Insert after the sticky progress container if it exists
+    const progressContainer = logDisplay.querySelector('.sticky-progress-container');
+    if (progressContainer) {
+      logDisplay.insertBefore(logEntry, progressContainer.nextSibling);
+    } else {
+      logDisplay.appendChild(logEntry);
+    }
+    
+    // Auto-scroll to bottom, but keep progress bar visible
+    logDisplay.scrollTop = logDisplay.scrollHeight;
+  }
+
+  clearForensicsLog() {
+    if (confirm('¿Limpiar el log de análisis forense?')) {
+      const logDisplay = document.getElementById('forensics-log-display');
+      if (logDisplay) {
+        logDisplay.innerHTML = `
+          <div class="text-center text-gray-400 py-8">
+            <i class="fas fa-search text-4xl mb-4"></i>
+            <p class="text-lg">No hay análisis realizados</p>
+            <p class="text-sm">Inicia un análisis para ver los resultados aquí</p>
+          </div>
+        `;
+      }
+      this.showNotification('Log de análisis limpiado', 'success');
+    }
+  }
+
+  async exportForensicsResults() {
+    try {
+      this.showNotification('Exportando resultados del análisis...', 'info');
+      
+      const logDisplay = document.getElementById('forensics-log-display');
+      if (logDisplay) {
+        const content = logDisplay.textContent;
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `forensics_results_${new Date().toISOString().split('T')[0]}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        this.showNotification('Resultados exportados correctamente', 'success');
+      }
+    } catch (error) {
+      console.error('Error exportando resultados:', error);
+      this.showNotification('Error exportando resultados', 'error');
+    }
+  }
+
+  openForensicsSettings() {
+    this.showNotification('Configuración forense en desarrollo', 'info');
+  }
+
+  displayThreatHistoryClearedResults(newStats) {
+    const logDisplay = document.getElementById('forensics-log-display');
+    if (!logDisplay) return;
+
+    const resultDiv = document.createElement('div');
+    resultDiv.className = 'p-4 bg-purple-50 rounded-lg border border-purple-200 mb-2';
+    resultDiv.innerHTML = `
+      <h4 class="text-sm font-semibold text-purple-800 mb-3">🧹 Historial de Amenazas Limpiado</h4>
+      
+      <div class="space-y-3">
+        <div class="p-3 bg-white rounded-lg border border-gray-200">
+          <h5 class="text-sm font-medium text-gray-800 mb-2">📊 Nuevas Estadísticas:</h5>
+          <div class="text-xs text-gray-700 space-y-1">
+            <div>• Amenazas encontradas: <span class="font-semibold text-purple-600">${newStats.threatsFound}</span></div>
+            <div>• Archivos escaneados: <span class="font-semibold text-purple-600">${newStats.filesScanned}</span></div>
+            <div>• Total de escaneos: <span class="font-semibold text-purple-600">${newStats.totalScans}</span></div>
+          </div>
+        </div>
+        
+        <div class="p-3 bg-purple-50 rounded-lg border border-purple-200">
+          <h5 class="text-sm font-medium text-purple-800 mb-2">✅ Acción Completada:</h5>
+          <div class="text-xs text-purple-700">
+            Se ha limpiado completamente el historial de amenazas. Los contadores han sido reiniciados a cero.
+          </div>
+        </div>
+      </div>
+    `;
+    
+    const progressBar = logDisplay.querySelector('.sticky-progress-container');
+    if (progressBar) {
+      progressBar.insertAdjacentElement('afterend', resultDiv);
+    } else {
+      logDisplay.insertBefore(resultDiv, logDisplay.firstChild);
     }
   }
 }
