@@ -5,46 +5,46 @@
   "totalFilesScanned": 0,
   "totalThreatsFound": 0,
   "lastAnalysis": {
-    "fileName": "malware_pattern_test.txt",
-    "timestamp": 1759182688135,
-    "filePath": "C:\\Users\\aoshi\\OneDrive\\Desktop\\Antivirus_Test_Files\\malware_pattern_test.txt",
+    "fileName": "Formato Complementario 2025v_KALANY SANZ.docx",
+    "timestamp": 1759188918951,
+    "filePath": "C:\\Users\\aoshi\\OneDrive\\Desktop\\Formato Complementario 2025v_KALANY SANZ.docx",
     "analysisResult": {
       "success": true,
-      "filePath": "C:\\Users\\aoshi\\OneDrive\\Desktop\\Antivirus_Test_Files\\malware_pattern_test.txt",
+      "filePath": "C:\\Users\\aoshi\\OneDrive\\Desktop\\Formato Complementario 2025v_KALANY SANZ.docx",
       "analysisType": "full",
       "analysis": {
         "basic": {
-          "name": "malware_pattern_test.txt",
-          "extension": ".txt",
-          "size": 76,
-          "sizeFormatted": "76 Bytes",
-          "type": "text",
-          "created": "2025-09-29T21:50:33.885Z",
-          "modified": "2025-09-29T21:50:33.885Z",
-          "accessed": "2025-09-29T21:50:33.885Z",
+          "name": "Formato Complementario 2025v_KALANY SANZ.docx",
+          "extension": ".docx",
+          "size": 88820,
+          "sizeFormatted": "86.74 KB",
+          "type": "document",
+          "created": "2025-08-11T14:20:14.997Z",
+          "modified": "2025-08-11T15:17:01.000Z",
+          "accessed": "2025-09-29T23:35:17.336Z",
           "permissions": "100666",
           "isHidden": false,
           "isExecutable": false
         },
         "hash": {
-          "md5": "f7c4e458fe145e0710e272ebd1a4193d",
-          "sha1": "49b562f76b566e8efd4528cbcf690b40cf3ecc02",
-          "sha256": "435a780aed5605e20e3a83eb6cebd9d3e8be9092e5f9873e8d9840f139c99349",
-          "sha512": "3c25537cefb516be5e272dd13439d165ee7376496a33f2511d7ca86041bc3706c66941dceb862bf0a8fde21e8a266dc85578fb4fac8511f25b2376ba58ab7c73"
+          "md5": "ab43c0d94009d5a08b72b0fe27e1aad5",
+          "sha1": "6da2dbfeafc904816be92ae20013dc28b495170c",
+          "sha256": "434590f01c6d517088fb35ca23c6ccaf0281fbbaffbe7e1564c2f71cd061949f",
+          "sha512": "1b3e924836e00c885ef10c1b11eadfbfc98066ca1ac3869a03a3aa95b81301d57d6f2e58d503c147f61c6723e543a73407dee9f8de0366b8b0f2d600bb92a395"
         },
         "metadata": {
           "basic": {
-            "name": "malware_pattern_test.txt",
-            "directory": "C:\\Users\\aoshi\\OneDrive\\Desktop\\Antivirus_Test_Files",
-            "extension": ".txt",
-            "size": 76,
-            "created": "2025-09-29T21:50:33.885Z",
-            "modified": "2025-09-29T21:50:33.885Z",
-            "accessed": "2025-09-29T21:50:33.885Z"
+            "name": "Formato Complementario 2025v_KALANY SANZ.docx",
+            "directory": "C:\\Users\\aoshi\\OneDrive\\Desktop",
+            "extension": ".docx",
+            "size": 88820,
+            "created": "2025-08-11T14:20:14.997Z",
+            "modified": "2025-08-11T15:17:01.000Z",
+            "accessed": "2025-09-29T23:35:17.336Z"
           },
           "extended": {
             "document": {
-              "format": ".txt",
+              "format": ".docx",
               "hasMetadata": false,
               "pages": 0,
               "author": "unknown"
@@ -52,23 +52,17 @@
           }
         },
         "content": {
-          "type": "text",
+          "type": "document",
           "encoding": "utf8",
           "language": "unknown",
-          "lines": 1,
-          "words": 12,
-          "characters": 76,
+          "lines": 607,
+          "words": 1511,
+          "characters": 85559,
           "suspiciousPatterns": []
         },
         "security": {
-          "riskLevel": "high",
-          "threats": [
-            {
-              "type": "suspicious_name",
-              "severity": "high",
-              "description": "Nombre de archivo sospechoso"
-            }
-          ],
+          "riskLevel": "low",
+          "threats": [],
           "vulnerabilities": [
             {
               "type": "permissive_permissions",
@@ -77,13 +71,11 @@
             }
           ],
           "recommendations": [
-            "Revisar inmediatamente este archivo",
-            "Considerar cuarentena del archivo",
             "Restringir permisos del archivo"
           ]
         }
       },
-      "timestamp": "2025-09-29T21:51:28.131Z",
+      "timestamp": "2025-09-29T23:35:18.946Z",
       "duration": 0
     }
   }

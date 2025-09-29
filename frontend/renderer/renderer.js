@@ -1658,10 +1658,15 @@ class CiberSegApp {
       isScanning: false,
       currentFile: 0,
       totalFiles: 0,
-      percentage: 0,
+      progressPercent: 0,
       startTime: null,
-      eta: null
+      etaSeconds: null,
+      currentFileName: null,
+      folderType: null
     };
+    
+    // Update the terminal progress to hide the progress bar
+    this.updateTerminalProgress();
   }
 
   showFolderSelectionDialog() {
