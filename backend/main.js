@@ -7,6 +7,7 @@ const fs = require('fs');
 // Importar módulos de análisis
 const FileAnalyzer = require('./analyzer');
 const SystemAnalyzer = require('./systemAnalyzer');
+const PasswordVault = require('./passwordVault');
 
 // Proceso global del keylogger
 let keyloggerProcess = null;
@@ -286,6 +287,40 @@ function setupIPC() {
     };
   });
 
+  // Manejadores de bóveda de contraseñas
+  ipcMain.handle('add-password-to-vault', async (event, passwordData) => {
+    const { label, password, username = '', website = '', notes = '' } = passwordData;
+    return PasswordVault.addPasswordToVault(label, password, username, website, notes);
+  });
+
+  ipcMain.handle('remove-password-from-vault', async (event, passwordId) => {
+    return PasswordVault.removePasswordFromVault(passwordId);
+  });
+
+  ipcMain.handle('get-all-passwords', async () => {
+    return PasswordVault.getAllPasswords();
+  });
+
+  ipcMain.handle('search-passwords', async (event, query) => {
+    return PasswordVault.searchPasswords(query);
+  });
+
+  ipcMain.handle('export-vault', async (event, format = 'json') => {
+    return PasswordVault.exportVault(format);
+  });
+
+  ipcMain.handle('import-vault', async (event, importData) => {
+    return PasswordVault.importVault(importData);
+  });
+
+  ipcMain.handle('get-vault-stats', async () => {
+    return PasswordVault.getVaultStats();
+  });
+
+  ipcMain.handle('recalculate-password-strengths', async () => {
+    return PasswordVault.recalculateAllPasswordStrengths();
+  });
+
   // Monitoreo de red
   ipcMain.handle('monitor-network', async () => {
     console.log('Iniciando monitoreo de red...');
@@ -299,32 +334,179 @@ function setupIPC() {
   });
 
   // Análisis forense
-  ipcMain.handle('forensic-analysis', async (event, filePath) => {
-    console.log(`Iniciando análisis forense de: ${filePath}`);
-    return {
-      status: 'completado',
-      fileHash: 'sha256:abc123...',
-      fileType: 'ejecutable',
-      suspicious: false,
-      metadata: {
-        created: '2024-01-15T10:30:00Z',
-        modified: '2024-01-15T10:30:00Z',
-        size: '2.5 MB'
-      },
-      timestamp: new Date().toISOString()
-    };
+  ipcMain.handle('forensic-analysis', async (event, fileInfo) => {
+    console.log(`Iniciando análisis forense de: ${fileInfo.filename}`);
+    
+    try {
+      const crypto = require('crypto');
+      const fs = require('fs');
+      const path = require('path');
+      
+      // Calculate file hash
+      const hash = crypto.createHash('sha256');
+      hash.update(fileInfo.data);
+      const fileHash = hash.digest('hex');
+      
+      // Determine file type based on extension and content
+      let fileType = 'desconocido';
+      let suspicious = false;
+      
+      const extension = path.extname(fileInfo.filename).toLowerCase();
+      const filename = fileInfo.filename.toLowerCase();
+      
+      // File type detection
+      if (['.exe', '.dll', '.sys', '.bat', '.cmd', '.scr'].includes(extension)) {
+        fileType = 'ejecutable';
+        suspicious = true; // Executables are potentially suspicious
+      } else if (['.pdf', '.doc', '.docx', '.xls', '.xlsx'].includes(extension)) {
+        fileType = 'documento';
+      } else if (['.jpg', '.jpeg', '.png', '.gif', '.bmp'].includes(extension)) {
+        fileType = 'imagen';
+      } else if (['.mp4', '.avi', '.mov', '.wmv'].includes(extension)) {
+        fileType = 'video';
+      } else if (['.mp3', '.wav', '.flac', '.aac'].includes(extension)) {
+        fileType = 'audio';
+      } else if (['.zip', '.rar', '.7z', '.tar'].includes(extension)) {
+        fileType = 'archivo comprimido';
+        suspicious = true; // Compressed files can hide malicious content
+      } else if (['.txt', '.log', '.csv'].includes(extension)) {
+        fileType = 'texto';
+      }
+      
+      // Additional suspicious indicators
+      if (filename.includes('virus') || filename.includes('malware') || filename.includes('trojan')) {
+        suspicious = true;
+      }
+      
+      // Create analysis result
+      const analysisResult = {
+        status: 'completado',
+        filename: fileInfo.filename,
+        fileHash: `sha256:${fileHash}`,
+        fileType: fileType,
+        suspicious: suspicious,
+        metadata: {
+          size: `${(fileInfo.size / 1024 / 1024).toFixed(2)} MB`,
+          type: fileInfo.type || 'application/octet-stream',
+          extension: extension
+        },
+        timestamp: new Date().toISOString(),
+        analysis: {
+          hashAnalysis: 'Completado',
+          typeDetection: 'Completado',
+          suspiciousPatterns: suspicious ? 'Patrones sospechosos detectados' : 'Sin patrones sospechosos',
+          riskLevel: suspicious ? 'Alto' : 'Bajo'
+        }
+      };
+      
+      // Log the analysis to file
+      const analysisLogPath = path.join(__dirname, 'analysis_log.txt');
+      const logEntry = JSON.stringify(analysisResult) + '\n';
+      fs.appendFileSync(analysisLogPath, logEntry);
+      
+      console.log('Análisis forense completado:', analysisResult);
+      return analysisResult;
+      
+    } catch (error) {
+      console.error('Error en análisis forense:', error);
+      return {
+        status: 'error',
+        error: error.message,
+        timestamp: new Date().toISOString()
+      };
+    }
   });
 
   // Información del sistema
   ipcMain.handle('get-system-info', async () => {
+    const os = require('os');
     return {
       platform: process.platform,
       arch: process.arch,
       version: process.version,
       uptime: process.uptime(),
       memory: process.memoryUsage(),
+      totalMemory: os.totalmem(),
+      cpuCount: os.cpus().length,
       timestamp: new Date().toISOString()
     };
+  });
+
+  // Get last analysis info
+  ipcMain.handle('get-last-analysis', async () => {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const analysisLogPath = path.join(__dirname, 'analysis_log.txt');
+      
+      if (fs.existsSync(analysisLogPath)) {
+        const content = fs.readFileSync(analysisLogPath, 'utf8');
+        const lines = content.trim().split('\n');
+        if (lines.length > 0) {
+          const lastLine = lines[lines.length - 1];
+          try {
+            const analysis = JSON.parse(lastLine);
+            return {
+              timestamp: analysis.timestamp,
+              filename: analysis.filename || 'Unknown',
+              status: analysis.status || 'completed',
+              suspicious: analysis.suspicious || false
+            };
+          } catch (parseError) {
+            return null;
+          }
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting last analysis:', error);
+      return null;
+    }
+  });
+
+  ipcMain.handle('get-analysis-stats', async () => {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const analysisLogPath = path.join(__dirname, 'analysis_log.txt');
+      
+      let totalScans = 0;
+      let suspiciousFiles = 0;
+      
+      if (fs.existsSync(analysisLogPath)) {
+        const content = fs.readFileSync(analysisLogPath, 'utf8');
+        const lines = content.trim().split('\n');
+        
+        lines.forEach(line => {
+          if (line.trim()) {
+            try {
+              const analysis = JSON.parse(line);
+              if (analysis.status === 'completado') {
+                totalScans++;
+                if (analysis.suspicious) {
+                  suspiciousFiles++;
+                }
+              }
+            } catch (parseError) {
+              // Skip invalid lines
+            }
+          }
+        });
+      }
+      
+      return {
+        totalScans,
+        suspiciousFiles,
+        safeFiles: totalScans - suspiciousFiles
+      };
+    } catch (error) {
+      console.error('Error getting analysis stats:', error);
+      return {
+        totalScans: 0,
+        suspiciousFiles: 0,
+        safeFiles: 0
+      };
+    }
   });
 
   // Estado de seguridad

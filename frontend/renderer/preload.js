@@ -9,6 +9,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   monitorNetwork: () => ipcRenderer.invoke('monitor-network'),
   forensicAnalysis: (filePath) => ipcRenderer.invoke('forensic-analysis', filePath),
   
+  // Funciones de bóveda de contraseñas
+  addPasswordToVault: (passwordData) => ipcRenderer.invoke('add-password-to-vault', passwordData),
+  removePasswordFromVault: (passwordId) => ipcRenderer.invoke('remove-password-from-vault', passwordId),
+  getAllPasswords: () => ipcRenderer.invoke('get-all-passwords'),
+  searchPasswords: (query) => ipcRenderer.invoke('search-passwords', query),
+  exportVault: (format) => ipcRenderer.invoke('export-vault', format),
+  importVault: (importData) => ipcRenderer.invoke('import-vault', importData),
+  getVaultStats: () => ipcRenderer.invoke('get-vault-stats'),
+  recalculatePasswordStrengths: () => ipcRenderer.invoke('recalculate-password-strengths'),
+  
   // Funciones del sistema
   getSystemInfo: () => ipcRenderer.invoke('get-system-info'),
   getSecurityStatus: () => ipcRenderer.invoke('get-security-status'),
@@ -59,6 +69,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAnalysisReports: () => ipcRenderer.invoke('get-analysis-reports'),
   exportAnalysisReport: (reportId, format) => ipcRenderer.invoke('export-analysis-report', reportId, format),
   clearAnalysisLogs: () => ipcRenderer.invoke('clear-analysis-logs'),
+  getLastAnalysis: () => ipcRenderer.invoke('get-last-analysis'),
+  getAnalysisStats: () => ipcRenderer.invoke('get-analysis-stats'),
   
   // Actualizaciones en tiempo real del keylogger
   onKeyloggerUpdate: (callback) => ipcRenderer.on('keylogger-update', callback),

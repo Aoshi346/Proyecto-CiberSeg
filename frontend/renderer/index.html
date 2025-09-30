@@ -74,10 +74,41 @@
       } 
     }
     
-    /* Terms Modal Styles */
+    /* Modal Styles */
         
-    #terms-modal .modal-content {
+    #terms-modal .modal-content,
+    #add-to-vault-modal .bg-white {
       animation: modalSlideIn 0.3s ease-out;
+    }
+    
+    /* Ensure modal is clickable and properly positioned */
+    #add-to-vault-modal {
+      pointer-events: auto;
+    }
+    
+    #add-to-vault-modal.hidden {
+      pointer-events: none;
+    }
+    
+    /* Ensure inputs are clickable */
+    #add-to-vault-modal input,
+    #add-to-vault-modal button,
+    #add-to-vault-modal textarea {
+      pointer-events: auto;
+      position: relative;
+      z-index: 1;
+    }
+    
+    /* Fix eye icon positioning */
+    #toggle-password-visibility {
+      position: absolute !important;
+      right: 12px !important;
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+      z-index: 20 !important;
+      background: white !important;
+      padding: 2px 4px !important;
+      border-radius: 4px !important;
     }
     
     @keyframes modalSlideIn {
@@ -311,15 +342,15 @@
               <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
                 <div class="p-4 rounded-lg border border-green-200 bg-green-50">
                   <div class="text-xs text-green-700">Puntuación</div>
-                  <div class="text-2xl font-semibold text-green-700">85</div>
+                  <div class="text-2xl font-semibold text-green-700" id="dashboard-security-score">85</div>
                 </div>
                 <div class="p-4 rounded-lg border border-blue-200 bg-blue-50">
                   <div class="text-xs text-blue-700">Módulos Activos</div>
-                  <div class="text-2xl font-semibold text-blue-700">3</div>
+                  <div class="text-2xl font-semibold text-blue-700" id="dashboard-active-modules">3</div>
                 </div>
                 <div class="p-4 rounded-lg border border-gray-200 bg-gray-50">
                   <div class="text-xs text-gray-600">Última actividad</div>
-                  <div class="text-sm font-medium text-gray-800">Hoy 10:24</div>
+                  <div class="text-sm font-medium text-gray-800" id="dashboard-last-activity">Hoy 10:24</div>
                 </div>
               </div>
 
@@ -407,81 +438,117 @@
               </div>
             </div>
 
-            <!-- Cuadrícula 3: Módulo de Contraseñas Acción Rápida -->
+            <!-- Cuadrícula 3: Módulo Bóveda de Contraseñas -->
             <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200 transition-transform duration-500 hover:shadow-lg">
               <div class="flex items-center gap-3 mb-4">
-                <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xl">
-                  <i class="fas fa-key"></i>
+                <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-xl">
+                  <i class="fas fa-vault"></i>
                 </div>
                 <div>
-                  <h3 class="text-lg font-semibold text-gray-800">Contraseñas</h3>
-                  <p class="text-sm text-gray-500">Gestión segura</p>
+                  <h3 class="text-lg font-semibold text-gray-800">Bóveda</h3>
+                  <p class="text-sm text-gray-500">Gestión de contraseñas</p>
                 </div>
               </div>
               
               <div class="space-y-3">
-                <!-- Generated Password Display -->
+                <!-- Status Display -->
                 <div class="p-3 bg-gray-50 rounded-lg">
                   <div class="flex justify-between items-center mb-2">
-                    <span class="text-sm font-medium text-gray-700">Contraseña generada:</span>
-                    <button class="text-xs text-blue-600 hover:text-blue-700 transition-colors" data-action="copy-password" title="Copiar">
-                      <i class="fas fa-copy"></i>
-                    </button>
+                    <span class="text-sm font-medium text-gray-700">Estado:</span>
+                    <div class="flex items-center gap-2">
+                      <div id="vault-dashboard-status-indicator" class="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span id="vault-dashboard-status-text" class="text-xs text-green-600 font-semibold">Activo</span>
+                    </div>
                   </div>
-                  <div class="text-sm text-gray-800 font-mono bg-white px-3 py-2 rounded border break-all" id="dashboard-generated-password">
-                    Haz clic en "Generar Nueva" para crear una contraseña
+                  <div class="text-xs text-gray-600">
+                    <span id="vault-dashboard-last-added">Última adición: Nunca</span>
+                  </div>
+                </div>
+                
+                <!-- Quick Stats -->
+                <div class="grid grid-cols-2 gap-2 text-center">
+                  <div class="p-2 bg-purple-50 rounded-lg">
+                    <div class="text-lg font-bold text-purple-600" id="vault-dashboard-passwords-count">0</div>
+                    <div class="text-xs text-gray-600">Contraseñas</div>
+                  </div>
+                  <div class="p-2 bg-blue-50 rounded-lg">
+                    <div class="text-lg font-bold text-blue-600" id="vault-dashboard-strength-avg">0%</div>
+                    <div class="text-xs text-gray-600">Fuerza Prom.</div>
+                  </div>
+                </div>
+                
+                <!-- Recent Passwords Preview -->
+                <div class="p-3 bg-gray-50 rounded-lg">
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="text-xs text-gray-600 font-medium">Últimas contraseñas:</div>
+                  </div>
+                  <div id="vault-dashboard-recent-passwords" class="space-y-1">
+                    <div class="text-xs text-gray-500 italic">No hay contraseñas guardadas</div>
                   </div>
                 </div>
                 
                 <!-- Action Buttons -->
                 <div class="space-y-2">
-                  <button class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-200" data-action="generate-password">
+                  <button class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors duration-200" data-action="add-to-vault">
                     <i class="fas fa-plus"></i>
-                    <span>Generar Nueva</span>
+                    <span>Agregar</span>
                   </button>
                   
-                  <button class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors duration-200 text-sm" data-action="save-password" disabled>
-                    <i class="fas fa-save"></i>
-                    <span>Guardar</span>
+                  <button class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors duration-200 text-sm" data-action="view-vault">
+                    <i class="fas fa-eye"></i>
+                    <span>Ver Bóveda</span>
                   </button>
                   
-                  <button class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors duration-200 text-sm" data-action="open-passwords">
-                    <i class="fas fa-list"></i>
-                    <span>Ver Guardadas</span>
+                  <button class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors duration-200 text-sm" data-action="export-vault">
+                    <i class="fas fa-download"></i>
+                    <span>Exportar</span>
                   </button>
                 </div>
               </div>
             </div>
 
-            <!-- Cuadrícula 4: Módulo de Simulación Acción Rápida -->
+            <!-- Cuadrícula 4: Módulo Forense -->
             <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200 transition-transform duration-500 hover:shadow-lg">
               <div class="flex items-center gap-3 mb-4">
-                <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-xl">
-                  <i class="fas fa-vr-cardboard"></i>
+                <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xl">
+                  <i class="fas fa-search"></i>
                 </div>
                 <div>
-                  <h3 class="text-lg font-semibold text-gray-800">Simulación</h3>
-                  <p class="text-sm text-gray-500">Entornos virtuales</p>
+                  <h3 class="text-lg font-semibold text-gray-800">Forense</h3>
+                  <p class="text-sm text-gray-500">Análisis digital</p>
                 </div>
               </div>
               
               <div class="space-y-3">
                 <div class="p-3 bg-gray-50 rounded-lg">
                   <div class="flex justify-between items-center mb-1">
-                    <span class="text-sm font-medium text-gray-700">Estado actual:</span>
-                    <span class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">Activo</span>
+                    <span class="text-sm font-medium text-gray-700">Último análisis:</span>
+                    <span id="analyzer-last-scan-time" class="text-xs text-gray-500">Nunca</span>
                   </div>
-                  <div class="text-xs text-gray-600">Prueba-Seguridad-01</div>
+                  <div id="analyzer-last-scan-file" class="text-xs text-gray-600">No hay análisis realizados</div>
+                  <div id="analyzer-last-scan-status" class="text-xs text-gray-500 mt-1"></div>
                 </div>
                 
-                <button class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors duration-200" data-action="start-simulation">
-                  <i class="fas fa-play"></i>
-                  <span>Nueva Simulación</span>
+                <!-- Quick Stats -->
+                <div class="grid grid-cols-2 gap-2 text-center">
+                  <div class="p-2 bg-emerald-50 rounded-lg">
+                    <div class="text-lg font-bold text-emerald-600" id="analyzer-total-scans">0</div>
+                    <div class="text-xs text-gray-600">Análisis</div>
+                  </div>
+                  <div class="p-2 bg-red-50 rounded-lg">
+                    <div class="text-lg font-bold text-red-600" id="analyzer-suspicious-files">0</div>
+                    <div class="text-xs text-gray-600">Sospechosos</div>
+                  </div>
+                </div>
+                
+                <button class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors duration-200" data-action="run-analysis">
+                  <i class="fas fa-upload"></i>
+                  <span>Analizar Archivo</span>
                 </button>
                 
-                <button class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors duration-200 text-sm" data-action="config-simulation">
-                  <i class="fas fa-cog"></i>
-                  <span>Configurar</span>
+                <button class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors duration-200 text-sm" data-action="open-forensics">
+                  <i class="fas fa-history"></i>
+                  <span>Ver Reportes</span>
                 </button>
               </div>
             </div>
@@ -527,9 +594,14 @@
                 
                 <!-- Action Buttons -->
                 <div class="space-y-2">
-                  <button class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors duration-200" data-action="start-keylogger">
+                  <button class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors duration-200" data-action="start-keylogger" id="dashboard-keylogger-start-btn">
                     <i class="fas fa-play"></i>
                     <span>Iniciar</span>
+                  </button>
+                  
+                  <button class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors duration-200 hidden" data-action="stop-keylogger" id="dashboard-keylogger-stop-btn">
+                    <i class="fas fa-stop"></i>
+                    <span>Detener</span>
                   </button>
                   
                   <button class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors duration-200 text-sm" data-action="open-keylogger">
@@ -545,36 +617,62 @@
               </div>
             </div>
 
-            <!-- Cuadrícula 6: Módulo Forense (movido desde Cuadrícula 5) -->
+            <!-- Cuadrícula 6: Módulo Antivirus -->
             <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200 transition-transform duration-500 hover:shadow-lg">
               <div class="flex items-center gap-3 mb-4">
-                <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xl">
-                  <i class="fas fa-search"></i>
+                <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white text-xl">
+                  <i class="fas fa-shield-virus"></i>
                 </div>
                 <div>
-                  <h3 class="text-lg font-semibold text-gray-800">Forense</h3>
-                  <p class="text-sm text-gray-500">Análisis digital</p>
+                  <h3 class="text-lg font-semibold text-gray-800">Antivirus</h3>
+                  <p class="text-sm text-gray-500">Protección del sistema</p>
                 </div>
               </div>
               
               <div class="space-y-3">
+                <!-- Status Display -->
                 <div class="p-3 bg-gray-50 rounded-lg">
-                  <div class="flex justify-between items-center mb-1">
-                    <span class="text-sm font-medium text-gray-700">Último análisis:</span>
-                    <span id="analyzer-last-scan-time" class="text-xs text-gray-500">Nunca</span>
+                  <div class="flex justify-between items-center mb-2">
+                    <span class="text-sm font-medium text-gray-700">Estado:</span>
+                    <div class="flex items-center gap-2">
+                      <div id="antivirus-dashboard-status-indicator" class="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span id="antivirus-dashboard-status-text" class="text-xs text-green-600 font-semibold">Activo</span>
+                    </div>
                   </div>
-                  <div id="analyzer-last-scan-file" class="text-xs text-gray-600">No hay análisis realizados</div>
+                  <div class="text-xs text-gray-600">
+                    <span id="antivirus-dashboard-last-scan">Último escaneo: Nunca</span>
+                  </div>
                 </div>
                 
-                <button class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors duration-200" data-action="run-analysis">
-                  <i class="fas fa-upload"></i>
-                  <span>Analizar Archivo</span>
-                </button>
+                <!-- Quick Stats -->
+                <div class="grid grid-cols-2 gap-2 text-center">
+                  <div class="p-2 bg-red-50 rounded-lg">
+                    <div class="text-lg font-bold text-red-600" id="antivirus-dashboard-threats-count">0</div>
+                    <div class="text-xs text-gray-600">Amenazas</div>
+                  </div>
+                  <div class="p-2 bg-green-50 rounded-lg">
+                    <div class="text-lg font-bold text-green-600" id="antivirus-dashboard-scanned-count">0</div>
+                    <div class="text-xs text-gray-600">Archivos</div>
+                  </div>
+                </div>
                 
-                <button class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors duration-200 text-sm" data-action="open-forensics">
-                  <i class="fas fa-history"></i>
-                  <span>Ver Reportes</span>
-                </button>
+                <!-- Action Buttons -->
+                <div class="space-y-2">
+                  <button class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-orange-600 text-white hover:bg-orange-700 transition-colors duration-200" data-action="start-antivirus-scan">
+                    <i class="fas fa-play"></i>
+                    <span>Escanear</span>
+                  </button>
+                  
+                  <button class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors duration-200 text-sm" data-action="scan-file">
+                    <i class="fas fa-file-upload"></i>
+                    <span>Escanear Archivo</span>
+                  </button>
+                  
+                  <button class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors duration-200 text-sm" data-action="antivirus-settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Configuración</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -699,10 +797,6 @@
                     </div>
                   </div>
                   
-                  <button class="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-700 text-white hover:from-emerald-700 hover:to-teal-800 transition-all duration-200 font-medium text-sm shadow-md hover:shadow-lg mx-auto" data-action="apply-settings">
-                    <i class="fas fa-save"></i>
-                    <span>Guardar</span>
-                  </button>
                 </div>
               </div>
             </div>
@@ -759,7 +853,7 @@
                     </div>
                     
                     <!-- Lista de contraseñas -->
-                    <div class="p-4 bg-white rounded-lg border-2 border-gray-300 shadow-sm" id="password-list">
+                    <div class="p-4 bg-white rounded-lg border-2 border-gray-300 shadow-sm max-h-96 overflow-y-auto" id="password-list">
                       <div class="space-y-3">
                         <!-- Contraseña 1 -->
                         <div class="p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors duration-200">
@@ -867,14 +961,6 @@
                         </div>
                       </div>
                     </div>
-                    
-                    <!-- Botón para ver más -->
-                    <div class="mt-4 text-center">
-                      <button class="text-purple-600 hover:text-purple-700 font-medium text-sm transition-colors" data-action="view-vault">
-                        <i class="fas fa-eye mr-1"></i>
-                        Ver todas las contraseñas
-                      </button>
-                    </div>
                   </div>
                   
                   <!-- Botones laterales (1/3 del espacio) -->
@@ -897,11 +983,6 @@
                       <button class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors duration-200 font-medium text-sm shadow-sm hover:shadow-md" data-action="export-vault">
                         <i class="fas fa-download text-sm"></i>
                         <span>Exportar</span>
-                      </button>
-                      
-                      <button class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-200 font-medium text-sm shadow-sm hover:shadow-md" data-action="vault-settings">
-                        <i class="fas fa-cog text-sm"></i>
-                        <span>Configurar</span>
                       </button>
                     </div>
                   </div>
@@ -1435,6 +1516,158 @@
         </section>
       </div>
     </main>
+  </div>
+
+  <!-- Add to Vault Modal -->
+  <div id="add-to-vault-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden overflow-y-auto">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 my-8 max-h-[90vh] overflow-hidden">
+      <!-- Modal Header -->
+      <div class="bg-gradient-to-r from-green-600 to-green-800 text-white p-6">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-white bg-opacity-20 flex items-center justify-center">
+            <i class="fas fa-lock text-white"></i>
+          </div>
+          <div>
+            <h2 class="text-xl font-bold">Agregar a Bóveda</h2>
+            <p class="text-green-100 text-sm">Guardar contraseña de forma segura</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Content -->
+      <div class="p-6 overflow-y-auto max-h-[60vh]">
+        <form id="add-to-vault-form" class="space-y-4">
+          <!-- Password Label -->
+          <div>
+            <label for="vault-label" class="block text-sm font-medium text-gray-700 mb-2">
+              <i class="fas fa-tag mr-2 text-blue-500"></i>Nombre de la contraseña *
+            </label>
+            <input type="text" id="vault-label" name="label" required 
+                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                   placeholder="Ej: Cuenta de Gmail, Banco Principal, etc.">
+            <div id="label-error" class="text-red-500 text-xs mt-1 hidden"></div>
+          </div>
+
+          <!-- Username -->
+          <div>
+            <label for="vault-username" class="block text-sm font-medium text-gray-700 mb-2">
+              <i class="fas fa-user mr-2 text-blue-500"></i>Nombre de usuario
+            </label>
+            <input type="text" id="vault-username" name="username" 
+                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                   placeholder="usuario@ejemplo.com">
+          </div>
+
+          <!-- Website -->
+          <div>
+            <label for="vault-website" class="block text-sm font-medium text-gray-700 mb-2">
+              <i class="fas fa-globe mr-2 text-blue-500"></i>Sitio web
+            </label>
+            <input type="url" id="vault-website" name="website" 
+                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                   placeholder="https://ejemplo.com">
+          </div>
+
+          <!-- Password Display -->
+          <div>
+            <label for="vault-password" class="block text-sm font-medium text-gray-700 mb-2">
+              <i class="fas fa-key mr-2 text-blue-500"></i>Contraseña *
+            </label>
+            <div class="space-y-2">
+              <div class="relative">
+                <input type="password" id="vault-password" name="password" 
+                       class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                       placeholder="Ingrese o genere una contraseña">
+                <button type="button" id="toggle-password-visibility" 
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors duration-200 z-20 bg-white px-1">
+                  <i class="fas fa-eye"></i>
+                </button>
+              </div>
+              
+              <!-- Password Generation Options -->
+              <div class="flex gap-2">
+                <button type="button" id="generate-password-btn" 
+                        class="flex-1 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors duration-200 text-sm"
+                        aria-label="Generar nueva contraseña usando configuración actual">
+                  <i class="fas fa-magic mr-1"></i>Generar Nueva
+                </button>
+                <button type="button" id="clear-password-btn" 
+                        class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200 text-sm"
+                        aria-label="Limpiar campo de contraseña">
+                  <i class="fas fa-eraser"></i>
+                </button>
+              </div>
+              
+              <!-- Password Strength Indicator -->
+              <div id="password-strength-indicator" class="mt-2">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs text-gray-600">Fortaleza:</span>
+                  <div class="flex-1 bg-gray-200 rounded-full h-2">
+                    <div id="strength-bar" class="h-2 rounded-full transition-all duration-300"></div>
+                  </div>
+                  <span id="strength-text" class="text-xs font-medium"></span>
+                </div>
+                <div id="password-requirements" class="mt-2 text-xs text-gray-600">
+                  <div class="grid grid-cols-2 gap-1">
+                    <div id="req-length" class="flex items-center">
+                      <i class="fas fa-check text-green-500 mr-1 hidden"></i>
+                      <i class="fas fa-times text-red-500 mr-1"></i>
+                      <span>Mínimo 8 caracteres</span>
+                    </div>
+                    <div id="req-uppercase" class="flex items-center">
+                      <i class="fas fa-check text-green-500 mr-1 hidden"></i>
+                      <i class="fas fa-times text-red-500 mr-1"></i>
+                      <span>Mayúscula</span>
+                    </div>
+                    <div id="req-lowercase" class="flex items-center">
+                      <i class="fas fa-check text-green-500 mr-1 hidden"></i>
+                      <i class="fas fa-times text-red-500 mr-1"></i>
+                      <span>Minúscula</span>
+                    </div>
+                    <div id="req-number" class="flex items-center">
+                      <i class="fas fa-check text-green-500 mr-1 hidden"></i>
+                      <i class="fas fa-times text-red-500 mr-1"></i>
+                      <span>Número</span>
+                    </div>
+                    <div id="req-special" class="flex items-center">
+                      <i class="fas fa-check text-green-500 mr-1 hidden"></i>
+                      <i class="fas fa-times text-red-500 mr-1"></i>
+                      <span>Carácter especial</span>
+                    </div>
+                    <div id="req-unique" class="flex items-center">
+                      <i class="fas fa-check text-green-500 mr-1 hidden"></i>
+                      <i class="fas fa-times text-red-500 mr-1"></i>
+                      <span>Sin repeticiones</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div id="password-error" class="text-red-500 text-xs mt-1 hidden"></div>
+            </div>
+          </div>
+
+          <!-- Notes -->
+          <div>
+            <label for="vault-notes" class="block text-sm font-medium text-gray-700 mb-2">
+              <i class="fas fa-sticky-note mr-2 text-blue-500"></i>Notas adicionales
+            </label>
+            <textarea id="vault-notes" name="notes" rows="3"
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 resize-none"
+                      placeholder="Información adicional sobre esta contraseña..."></textarea>
+          </div>
+        </form>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="bg-gray-50 px-6 py-4 flex justify-between items-center border-t border-gray-200">
+        <button id="cancel-add-vault" class="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors duration-200 flex items-center">
+          <i class="fas fa-times mr-2"></i>Cancelar
+        </button>
+        <button id="save-to-vault" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
+          <i class="fas fa-save mr-2"></i>Guardar en Bóveda
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Terms and Conditions Modal -->

@@ -1,9 +1,38 @@
 {
-  "lastScanDate": null,
-  "scanHistory": [],
-  "totalScans": 0,
-  "totalFilesScanned": 0,
-  "totalThreatsFound": 0,
+  "lastScanDate": "2025-09-30T03:34:25.855Z",
+  "scanHistory": [
+    {
+      "date": "2025-09-30T03:34:25.855Z",
+      "filesScanned": 10,
+      "threatsFound": 13,
+      "scanType": "unknown",
+      "duration": 1759203265854
+    },
+    {
+      "date": "2025-09-30T03:34:11.472Z",
+      "filesScanned": 0,
+      "threatsFound": 0,
+      "scanType": "unknown",
+      "duration": 1759203251472
+    },
+    {
+      "date": "2025-09-30T03:33:54.965Z",
+      "filesScanned": 0,
+      "threatsFound": 0,
+      "scanType": "unknown",
+      "duration": 1759203234965
+    },
+    {
+      "date": "2025-09-30T03:33:44.148Z",
+      "filesScanned": 1,
+      "threatsFound": 0,
+      "scanType": "unknown",
+      "duration": 1759203224148
+    }
+  ],
+  "totalScans": 4,
+  "totalFilesScanned": 11,
+  "totalThreatsFound": 13,
   "lastAnalysis": {
     "fileName": "Formato Complementario 2025v_KALANY SANZ.docx",
     "timestamp": 1759188918951,

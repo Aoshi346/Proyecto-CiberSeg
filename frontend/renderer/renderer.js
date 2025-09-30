@@ -13,6 +13,7 @@ class CiberSegApp {
     this.initializeKeylogger();
     this.initializeAntivirusStats();
     this.loadAppData();
+    this.setupDashboardRefresh();
     
     // Siempre mostrar modal de términos para propósitos de prueba
     this.showTermsModal();
@@ -23,6 +24,33 @@ class CiberSegApp {
     // }
     
     console.log('Aplicación CiberSeg inicializada exitosamente');
+  }
+
+  setupDashboardRefresh() {
+    // Refresh dashboard data every 30 seconds
+    setInterval(() => {
+      if (this.currentSection === 'dashboard') {
+        this.refreshDashboardData();
+      }
+    }, 30000);
+
+    // Also refresh when navigating to dashboard
+    const originalNavigateToSection = this.navigateToSection.bind(this);
+    this.navigateToSection = (section) => {
+      originalNavigateToSection(section);
+      if (section === 'dashboard') {
+        setTimeout(() => this.refreshDashboardData(), 100);
+      }
+    };
+  }
+
+  async refreshDashboardData() {
+    try {
+      await this.loadDashboardData();
+      console.log('Dashboard data refreshed');
+    } catch (error) {
+      console.error('Error refreshing dashboard data:', error);
+    }
   }
 
   setupEventListeners() {
@@ -66,6 +94,7 @@ class CiberSegApp {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const action = btn.dataset.action;
+        console.log('Button clicked with action:', action, 'Button:', btn);
         this.handleAction(action, btn);
       });
     });
@@ -219,6 +248,7 @@ class CiberSegApp {
   }
 
   handleAction(action, el) {
+    console.log('handleAction called with action:', action);
     switch (action) {
       case 'open-passwords':
         this.navigateToSection('passwords');
@@ -241,6 +271,19 @@ class CiberSegApp {
         break;
       case 'open-tools':
         this.navigateToSection('settings');
+        break;
+      // Keylogger actions
+      case 'start-keylogger':
+        this.startKeylogger();
+        break;
+      case 'stop-keylogger':
+        this.stopKeylogger();
+        break;
+      case 'open-keylogger':
+        this.navigateToSection('keylogger');
+        break;
+      case 'export-keylogger':
+        this.exportKeyloggerData();
         break;
       // Antivirus actions
       case 'start-antivirus-scan':
@@ -314,26 +357,18 @@ class CiberSegApp {
       case 'copy-password':
         this.copyPassword();
         break;
-      case 'save-password':
-        this.saveGeneratedPassword();
-        break;
       case 'view-vault':
         this.viewVault();
         break;
       case 'add-to-vault':
+        console.log('add-to-vault case triggered');
         this.addToVault();
-        break;
-      case 'apply-settings':
-        this.applyPasswordSettings();
         break;
       case 'export-vault':
         this.exportVault();
         break;
       case 'import-vault':
         this.importVault();
-        break;
-      case 'vault-settings':
-        this.openVaultSettings();
         break;
       default:
         this.showNotification(`Acción: ${action}`, 'info');
@@ -476,12 +511,21 @@ class CiberSegApp {
 
   async generateNewPassword() {
     try {
-      // Obtener configuración actual
-      const length = parseInt(document.getElementById('password-length')?.value || 16);
-      const includeUppercase = document.getElementById('include-uppercase')?.checked || true;
-      const includeLowercase = document.getElementById('include-lowercase')?.checked || true;
-      const includeNumbers = document.getElementById('include-numbers')?.checked || true;
-      const includeSymbols = document.getElementById('include-symbols')?.checked || true;
+      // Obtener configuración actual - usar valores por defecto si no están disponibles
+      const lengthElement = document.getElementById('password-length');
+      const length = lengthElement ? parseInt(lengthElement.value) : 16;
+      
+      const includeUppercaseElement = document.getElementById('include-uppercase');
+      const includeUppercase = includeUppercaseElement ? includeUppercaseElement.checked : true;
+      
+      const includeLowercaseElement = document.getElementById('include-lowercase');
+      const includeLowercase = includeLowercaseElement ? includeLowercaseElement.checked : true;
+      
+      const includeNumbersElement = document.getElementById('include-numbers');
+      const includeNumbers = includeNumbersElement ? includeNumbersElement.checked : true;
+      
+      const includeSymbolsElement = document.getElementById('include-symbols');
+      const includeSymbols = includeSymbolsElement ? includeSymbolsElement.checked : true;
 
       // Generar contraseña basada en configuración
       let charset = '';
@@ -523,12 +567,6 @@ class CiberSegApp {
       }
 
       // Habilitar botón de guardar
-      const saveButton = document.querySelector('[data-action="save-password"]');
-      if (saveButton) {
-        saveButton.disabled = false;
-        saveButton.classList.remove('opacity-50', 'cursor-not-allowed');
-      }
-
       // Almacenar la contraseña actual para guardar
       this.currentGeneratedPassword = password;
 
@@ -540,46 +578,6 @@ class CiberSegApp {
       console.error('Error al generar contraseña:', error);
       this.showNotification('Error al generar contraseña', 'error');
     }
-  }
-
-  saveGeneratedPassword() {
-    if (!this.currentGeneratedPassword) {
-      this.showNotification('No hay contraseña generada para guardar', 'warning');
-      return;
-    }
-
-    // Solicitar etiqueta/sitio web
-    const label = prompt('¿Para qué sitio o servicio es esta contraseña?', '');
-    if (!label || label.trim() === '') {
-      this.showNotification('Debe especificar un nombre para la contraseña', 'warning');
-      return;
-    }
-
-    // Guardar en bóveda
-    const vaultItem = {
-      label: label.trim(),
-      password: this.currentGeneratedPassword,
-      createdAt: new Date().toISOString(),
-      strength: this.calculatePasswordStrength(this.currentGeneratedPassword)
-    };
-
-    const stored = JSON.parse(localStorage.getItem('password-vault') || '[]');
-    stored.push(vaultItem);
-    localStorage.setItem('password-vault', JSON.stringify(stored));
-
-    // Actualizar información de bóveda
-    localStorage.setItem('last-vault-activity', new Date().toISOString());
-    this.loadVaultCount();
-    this.loadPasswordList();
-
-    // Deshabilitar botón de guardar
-    const saveButton = document.querySelector('[data-action="save-password"]');
-    if (saveButton) {
-      saveButton.disabled = true;
-      saveButton.classList.add('opacity-50', 'cursor-not-allowed');
-    }
-
-    this.showNotification(`Contraseña guardada para "${label}"`, 'success');
   }
 
   updateRecentPasswords(newPassword) {
@@ -673,19 +671,61 @@ class CiberSegApp {
 
 
   async openForensicAnalysis() {
-    this.showNotification('Abriendo herramientas forenses...', 'info');
+    this.showNotification('Seleccionando archivo para análisis...', 'info');
     
     try {
-      // Para fines de demostración, analizar un archivo de muestra
-      const result = await window.electronAPI.forensicAnalysis('sample-file.exe');
+      // Create file input for user to select file
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '*/*'; // Accept all file types
+      input.style.display = 'none';
       
-      if (result.status === 'completado') {
-        this.showNotification(`Análisis completado. Archivo: ${result.fileType}, Sospechoso: ${result.suspicious ? 'Sí' : 'No'}`, 'success');
-        console.log('Resultado del análisis forense:', result);
-      }
+      input.onchange = async (event) => {
+        const file = event.target.files[0];
+        if (!file) {
+          this.showNotification('No se seleccionó ningún archivo', 'warning');
+          return;
+        }
+        
+        this.showNotification(`Analizando archivo: ${file.name}...`, 'info');
+        
+        try {
+          // Read file and send for analysis
+          const arrayBuffer = await file.arrayBuffer();
+          const fileData = Buffer.from(arrayBuffer);
+          
+          const result = await window.electronAPI.forensicAnalysis({
+            filename: file.name,
+            size: file.size,
+            type: file.type,
+            data: fileData
+          });
+          
+          if (result.status === 'completado') {
+            this.showNotification(`Análisis completado. Archivo: ${result.fileType}, Sospechoso: ${result.suspicious ? 'Sí' : 'No'}`, 'success');
+            console.log('Resultado del análisis forense:', result);
+            
+            // Refresh forensics dashboard data
+            await this.loadForensicsStatus();
+          } else {
+            this.showNotification('Error en el análisis forense', 'error');
+          }
+        } catch (error) {
+          console.error('Error en el análisis forense:', error);
+          this.showNotification('Error en el análisis forense', 'error');
+        }
+        
+        // Clean up
+        document.body.removeChild(input);
+      };
+      
+      // Add to DOM and trigger click
+      document.body.appendChild(input);
+      input.click();
+      
     } catch (error) {
-      console.error('Error en el análisis forense:', error);
-      this.showNotification('Error en el análisis forense', 'error');
+      console.error('Error abriendo selector de archivos:', error);
+      this.showNotification('Error abriendo selector de archivos', 'error');
     }
   }
 
@@ -736,24 +776,395 @@ class CiberSegApp {
   }
 
   loadDashboardData() {
-    // Placeholder para obtener datos reales desde el proceso principal via preload
+    // Load all dashboard data
     this.loadVaultCount();
     this.loadRecentPasswords();
     this.loadPasswordList();
+    this.loadKeyloggerStatus();
+    this.loadAntivirusStatus();
+    this.loadForensicsStatus();
+    this.loadSystemStatus();
+    this.updateDashboardStatistics();
+    this.updateLastActivity();
+    // Ensure vault dashboard data is loaded
+    this.loadVaultDashboardData();
   }
 
-  loadVaultCount() {
-    const stored = JSON.parse(localStorage.getItem('password-vault') || '[]');
+  async updateDashboardStatistics() {
+    try {
+      // Calculate security score based on various factors
+      let securityScore = 0;
+      let activeModules = 0;
+
+      // Check vault status
+      const vaultStats = await window.electronAPI.getVaultStats();
+      if (vaultStats.success) {
+        securityScore += 20; // Base score for having vault
+        activeModules++;
+        
+        // Add points based on password strength
+        if (vaultStats.averageStrength > 70) securityScore += 15;
+        else if (vaultStats.averageStrength > 50) securityScore += 10;
+        else if (vaultStats.averageStrength > 30) securityScore += 5;
+      }
+
+      // Check keylogger status
+      const keyloggerStatus = await window.electronAPI.getKeyloggerStatus();
+      if (keyloggerStatus.isRunning) {
+        securityScore += 10; // Monitoring active
+        activeModules++;
+      }
+
+      // Check antivirus status (assume active if no errors)
+      securityScore += 15; // Base antivirus score
+      activeModules++;
+
+      // Check forensics capability
+      securityScore += 10; // Forensics available
+      activeModules++;
+
+      // Update UI
+      const scoreElement = document.getElementById('dashboard-security-score');
+      const modulesElement = document.getElementById('dashboard-active-modules');
+      
+      if (scoreElement) scoreElement.textContent = Math.min(100, securityScore);
+      if (modulesElement) modulesElement.textContent = activeModules;
+
+    } catch (error) {
+      console.error('Error updating dashboard statistics:', error);
+    }
+  }
+
+  async loadKeyloggerStatus() {
+    try {
+      const status = await window.electronAPI.getKeyloggerStatus();
+      this.updateKeyloggerDashboardStatus(status);
+    } catch (error) {
+      console.error('Error loading keylogger status:', error);
+    }
+  }
+
+  updateKeyloggerDashboardStatus(status) {
+    const indicator = document.getElementById('keylogger-dashboard-status-indicator');
+    const statusText = document.getElementById('keylogger-dashboard-status-text');
+    const sessionTime = document.getElementById('keylogger-session-time');
+    const keysCount = document.getElementById('keylogger-dashboard-keys-count');
+    const wordsCount = document.getElementById('keylogger-dashboard-words-count');
+    const startBtn = document.getElementById('dashboard-keylogger-start-btn');
+    const stopBtn = document.getElementById('dashboard-keylogger-stop-btn');
+
+    if (indicator && statusText) {
+      if (status.isRunning) {
+        indicator.className = 'w-2 h-2 bg-green-500 rounded-full';
+        statusText.textContent = 'Activo';
+        statusText.className = 'text-xs text-green-600 font-semibold';
+      } else {
+        indicator.className = 'w-2 h-2 bg-red-500 rounded-full';
+        statusText.textContent = 'Inactivo';
+        statusText.className = 'text-xs text-red-600 font-semibold';
+      }
+    }
+
+    // Update button visibility
+    if (startBtn && stopBtn) {
+      if (status.isRunning) {
+        startBtn.classList.add('hidden');
+        stopBtn.classList.remove('hidden');
+      } else {
+        startBtn.classList.remove('hidden');
+        stopBtn.classList.add('hidden');
+      }
+    }
+
+    if (sessionTime) {
+      const hours = Math.floor(status.sessionTime / 3600);
+      const minutes = Math.floor((status.sessionTime % 3600) / 60);
+      const seconds = status.sessionTime % 60;
+      sessionTime.textContent = `Sesión: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    if (keysCount) keysCount.textContent = status.stats.totalKeys;
+    if (wordsCount) wordsCount.textContent = status.stats.totalWords;
+  }
+
+  async loadAntivirusStatus() {
+    try {
+      // Get antivirus status from backend
+      const status = await window.electronAPI.getAntivirusStatus();
+      this.updateAntivirusDashboardStatus(status);
+    } catch (error) {
+      console.error('Error loading antivirus status:', error);
+      // Set default status
+      this.updateAntivirusDashboardStatus({
+        isActive: true,
+        lastScan: null,
+        threatsFound: 0,
+        filesScanned: 0
+      });
+    }
+  }
+
+  updateAntivirusDashboardStatus(status) {
+    const indicator = document.getElementById('antivirus-dashboard-status-indicator');
+    const statusText = document.getElementById('antivirus-dashboard-status-text');
+    const lastScan = document.getElementById('antivirus-dashboard-last-scan');
+    const threatsCount = document.getElementById('antivirus-dashboard-threats-count');
+    const scannedCount = document.getElementById('antivirus-dashboard-scanned-count');
+
+    if (indicator && statusText) {
+      if (status.isActive) {
+        indicator.className = 'w-2 h-2 bg-green-500 rounded-full';
+        statusText.textContent = 'Activo';
+        statusText.className = 'text-xs text-green-600 font-semibold';
+      } else {
+        indicator.className = 'w-2 h-2 bg-red-500 rounded-full';
+        statusText.textContent = 'Inactivo';
+        statusText.className = 'text-xs text-red-600 font-semibold';
+      }
+    }
+
+    if (lastScan) {
+      if (status.lastScan) {
+        const scanDate = new Date(status.lastScan);
+        const now = new Date();
+        const diffHours = Math.floor((now - scanDate) / (1000 * 60 * 60));
+        
+        if (diffHours < 1) {
+          lastScan.textContent = 'Último escaneo: Hace menos de 1 hora';
+        } else if (diffHours < 24) {
+          lastScan.textContent = `Último escaneo: Hace ${diffHours} horas`;
+        } else {
+          lastScan.textContent = `Último escaneo: ${scanDate.toLocaleDateString()}`;
+        }
+      } else {
+        lastScan.textContent = 'Último escaneo: Nunca';
+      }
+    }
+
+    if (threatsCount) threatsCount.textContent = status.threatsFound || 0;
+    if (scannedCount) scannedCount.textContent = status.filesScanned || 0;
+  }
+
+  async loadForensicsStatus() {
+    try {
+      // Get last analysis info
+      const lastAnalysis = await window.electronAPI.getLastAnalysis();
+      this.updateForensicsDashboardStatus(lastAnalysis);
+      
+      // Get analysis statistics
+      const analysisStats = await window.electronAPI.getAnalysisStats();
+      this.updateForensicsDashboardStats(analysisStats);
+    } catch (error) {
+      console.error('Error loading forensics status:', error);
+      this.updateForensicsDashboardStatus(null);
+    }
+  }
+
+  updateForensicsDashboardStatus(lastAnalysis) {
+    const lastScanTime = document.getElementById('analyzer-last-scan-time');
+    const lastScanFile = document.getElementById('analyzer-last-scan-file');
+    const lastScanStatus = document.getElementById('analyzer-last-scan-status');
+
+    if (lastAnalysis) {
+      if (lastScanTime) {
+        const analysisDate = new Date(lastAnalysis.timestamp);
+        lastScanTime.textContent = analysisDate.toLocaleString();
+      }
+      if (lastScanFile) {
+        lastScanFile.textContent = `Archivo: ${lastAnalysis.filename}`;
+      }
+      if (lastScanStatus) {
+        const statusText = lastAnalysis.suspicious ? 'Sospechoso' : 'Seguro';
+        const statusColor = lastAnalysis.suspicious ? 'text-red-600' : 'text-green-600';
+        lastScanStatus.innerHTML = `<span class="${statusColor} font-semibold">${statusText}</span>`;
+      }
+    } else {
+      if (lastScanTime) lastScanTime.textContent = 'Nunca';
+      if (lastScanFile) lastScanFile.textContent = 'No hay análisis realizados';
+      if (lastScanStatus) lastScanStatus.textContent = '';
+    }
+  }
+
+  updateForensicsDashboardStats(stats) {
+    const totalScans = document.getElementById('analyzer-total-scans');
+    const suspiciousFiles = document.getElementById('analyzer-suspicious-files');
+
+    if (totalScans) totalScans.textContent = stats.totalScans || 0;
+    if (suspiciousFiles) suspiciousFiles.textContent = stats.suspiciousFiles || 0;
+  }
+
+  async loadSystemStatus() {
+    try {
+      const systemInfo = await window.electronAPI.getSystemInfo();
+      this.updateSystemDashboardStatus(systemInfo);
+    } catch (error) {
+      console.error('Error loading system status:', error);
+    }
+  }
+
+  updateSystemDashboardStatus(systemInfo) {
+    const systemStatus = document.getElementById('system-status');
+    const systemInfoElement = document.getElementById('system-info');
+
+    if (systemStatus) {
+      systemStatus.textContent = 'Sistema OK';
+      systemStatus.className = 'text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full';
+    }
+
+    if (systemInfoElement && systemInfo) {
+      systemInfoElement.textContent = `OS: ${systemInfo.platform} | CPU: ${systemInfo.cpuCount} cores | RAM: ${Math.round(systemInfo.totalMemory / 1024 / 1024 / 1024)}GB`;
+    }
+  }
+
+  async loadVaultDashboardData() {
+    try {
+      const vaultStats = await window.electronAPI.getVaultStats();
+      this.updateVaultDashboardStatus(vaultStats);
+      
+      // Load recent passwords for dashboard preview
+      const recentPasswords = await window.electronAPI.getAllPasswords();
+      this.updateVaultDashboardRecentPasswords(recentPasswords);
+    } catch (error) {
+      console.error('Error loading vault dashboard data:', error);
+    }
+  }
+
+  updateVaultDashboardRecentPasswords(passwords) {
+    const recentContainer = document.getElementById('vault-dashboard-recent-passwords');
+    if (!recentContainer) return;
+
+    if (!passwords.success || !passwords.passwords || passwords.passwords.length === 0) {
+      recentContainer.innerHTML = '<div class="text-xs text-gray-500 italic">No hay contraseñas guardadas</div>';
+      return;
+    }
+
+    // Get the 3 most recent passwords
+    const recentPasswords = passwords.passwords
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 3);
+
+    if (recentPasswords.length === 0) {
+      recentContainer.innerHTML = '<div class="text-xs text-gray-500 italic">No hay contraseñas guardadas</div>';
+      return;
+    }
+
+    recentContainer.innerHTML = recentPasswords.map(password => {
+      const createdDate = new Date(password.createdAt);
+      const timeAgo = this.getTimeAgo(createdDate);
+      
+      return `
+        <div class="flex items-center justify-between p-2 bg-white rounded border text-xs">
+          <div class="flex-1">
+            <div class="font-medium text-gray-800 truncate">${password.label}</div>
+            <div class="text-gray-500">${password.username || 'Sin usuario'}</div>
+          </div>
+          <div class="text-gray-400 ml-2">${timeAgo}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  getTimeAgo(date) {
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Ahora';
+    if (diffMins < 60) return `${diffMins}m`;
+    if (diffHours < 24) return `${diffHours}h`;
+    if (diffDays < 7) return `${diffDays}d`;
+    return date.toLocaleDateString();
+  }
+
+  updateVaultDashboardStatus(stats) {
+    const indicator = document.getElementById('vault-dashboard-status-indicator');
+    const statusText = document.getElementById('vault-dashboard-status-text');
+    const lastAdded = document.getElementById('vault-dashboard-last-added');
+    const passwordsCount = document.getElementById('vault-dashboard-passwords-count');
+    const strengthAvg = document.getElementById('vault-dashboard-strength-avg');
+
+    // Extract stats from the response structure
+    const vaultStats = stats.stats || stats;
+    const totalPasswords = vaultStats.totalPasswords || 0;
+    const averageStrength = vaultStats.averageStrength || 0;
+
+    if (indicator && statusText) {
+      if (stats.success && totalPasswords > 0) {
+        indicator.className = 'w-2 h-2 bg-green-500 rounded-full';
+        statusText.textContent = 'Activo';
+        statusText.className = 'text-xs text-green-600 font-semibold';
+      } else {
+        indicator.className = 'w-2 h-2 bg-yellow-500 rounded-full';
+        statusText.textContent = 'Vacío';
+        statusText.className = 'text-xs text-yellow-600 font-semibold';
+      }
+    }
+
+    if (lastAdded) {
+      if (vaultStats.lastAdded) {
+        const addedDate = new Date(vaultStats.lastAdded);
+        const now = new Date();
+        const diffHours = Math.floor((now - addedDate) / (1000 * 60 * 60));
+        
+        if (diffHours < 1) {
+          lastAdded.textContent = 'Última adición: Hace menos de 1 hora';
+        } else if (diffHours < 24) {
+          lastAdded.textContent = `Última adición: Hace ${diffHours} horas`;
+        } else {
+          lastAdded.textContent = `Última adición: ${addedDate.toLocaleDateString()}`;
+        }
+      } else {
+        lastAdded.textContent = 'Última adición: Nunca';
+      }
+    }
+
+    if (passwordsCount) passwordsCount.textContent = totalPasswords;
+    if (strengthAvg) strengthAvg.textContent = `${Math.round(averageStrength)}%`;
+  }
+
+  updateLastActivity() {
+    const lastActivityElement = document.getElementById('dashboard-last-activity');
+    if (lastActivityElement) {
+      const now = new Date();
+      lastActivityElement.textContent = `Hoy ${now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`;
+    }
+  }
+
+  async loadVaultCount() {
+    try {
+      // First recalculate password strengths for existing passwords
+      await window.electronAPI.recalculatePasswordStrengths();
+      
+      const result = await window.electronAPI.getVaultStats();
+      this.updateVaultDashboardStatus(result);
+      
+      if (result.success) {
     const counter = document.getElementById('stored-count');
     if (counter) {
-      counter.textContent = stored.length;
+          counter.textContent = result.stats.totalPasswords;
     }
     
     // Actualizar estadísticas de fortaleza de contraseña
-    this.updatePasswordStrengthStats(stored);
+        this.updatePasswordStrengthStatsFromStats(result.stats);
     
     // Actualizar actividad de bóveda e información de almacenamiento
     this.updateVaultInfo();
+      }
+    } catch (error) {
+      console.error('Error cargando conteo de bóveda:', error);
+    }
+  }
+
+  updatePasswordStrengthStatsFromStats(stats) {
+    const strongEl = document.getElementById('strong-count');
+    const mediumEl = document.getElementById('medium-count');
+    const weakEl = document.getElementById('weak-count');
+    
+    if (strongEl) strongEl.textContent = stats.strongPasswords;
+    if (mediumEl) mediumEl.textContent = stats.mediumPasswords;
+    if (weakEl) weakEl.textContent = stats.weakPasswords;
   }
 
   updatePasswordStrengthStats(passwords) {
@@ -802,45 +1213,50 @@ class CiberSegApp {
     return Math.max(0, Math.min(100, score));
   }
 
-  updateVaultInfo() {
-    const stored = JSON.parse(localStorage.getItem('password-vault') || '[]');
-    
-    // Actualizar última actividad
-    const lastActivity = localStorage.getItem('last-vault-activity');
+  async updateVaultInfo() {
+    try {
+      const result = await window.electronAPI.getVaultStats();
+      
+      if (result.success) {
+        const stats = result.stats;
+        
+        // Actualizar última actividad (usar fecha de creación más reciente)
     const lastActivityEl = document.getElementById('last-vault-activity');
     if (lastActivityEl) {
-      if (lastActivity) {
-        const date = new Date(lastActivity);
-        lastActivityEl.textContent = date.toLocaleString();
-      } else {
-        lastActivityEl.textContent = 'Nunca';
-      }
-    }
-    
-    // Actualizar tamaño de almacenamiento
-    const storageSize = JSON.stringify(stored).length;
+          lastActivityEl.textContent = 'Activo';
+        }
+        
+        // Actualizar tamaño de almacenamiento estimado
     const storageEl = document.getElementById('vault-storage');
     if (storageEl) {
-      if (storageSize < 1024) {
-        storageEl.textContent = `${storageSize} B`;
-      } else if (storageSize < 1024 * 1024) {
-        storageEl.textContent = `${(storageSize / 1024).toFixed(1)} KB`;
+          const estimatedSize = stats.totalPasswords * 200; // Estimación aproximada
+          if (estimatedSize < 1024) {
+            storageEl.textContent = `${estimatedSize} B`;
+          } else if (estimatedSize < 1024 * 1024) {
+            storageEl.textContent = `${(estimatedSize / 1024).toFixed(1)} KB`;
       } else {
-        storageEl.textContent = `${(storageSize / (1024 * 1024)).toFixed(1)} MB`;
+            storageEl.textContent = `${(estimatedSize / (1024 * 1024)).toFixed(1)} MB`;
       }
+        }
+      }
+    } catch (error) {
+      console.error('Error actualizando información de bóveda:', error);
     }
   }
 
-  loadPasswordList() {
-    const stored = JSON.parse(localStorage.getItem('password-vault') || '[]');
+  async loadPasswordList() {
+    try {
+      const result = await window.electronAPI.getAllPasswords();
     const passwordListEl = document.getElementById('password-list');
     const vaultSubtitleEl = document.getElementById('vault-subtitle');
     
-    if (!passwordListEl) return;
+      if (!passwordListEl || !result.success) return;
+      
+      const stored = result.passwords;
     
     // Actualizar subtítulo
     if (vaultSubtitleEl) {
-      vaultSubtitleEl.textContent = `(${Math.min(stored.length, 5)} de ${stored.length})`;
+      vaultSubtitleEl.textContent = `(${stored.length} contraseñas)`;
     }
     
     // Encontrar el contenedor interno para elementos de contraseña
@@ -854,8 +1270,8 @@ class CiberSegApp {
     // Limpiar lista existente
     innerContainer.innerHTML = '';
     
-    // Mostrar primeras 5 contraseñas o marcador de posición si está vacío
-    const passwordsToShow = stored.slice(0, 5);
+    // Mostrar todas las contraseñas
+    const passwordsToShow = stored;
     
     if (passwordsToShow.length === 0) {
       // Mostrar marcador de posición
@@ -873,12 +1289,105 @@ class CiberSegApp {
         const passwordItem = this.createPasswordItem(item, index);
         innerContainer.appendChild(passwordItem);
       });
+      
+      // Add event listeners for password actions
+      this.setupPasswordItemEventListeners(innerContainer);
+      }
+    } catch (error) {
+      console.error('Error cargando lista de contraseñas:', error);
+    }
+  }
+
+  setupPasswordItemEventListeners(container) {
+    // Use event delegation to avoid multiple listeners
+    // Only set up once per container
+    if (container._passwordEventListenersSetup) {
+      return;
+    }
+    container._passwordEventListenersSetup = true;
+    
+    container.addEventListener('click', (e) => {
+      // Handle copy password button
+      if (e.target.closest('.copy-password-btn')) {
+        e.preventDefault();
+        e.stopPropagation();
+        const button = e.target.closest('.copy-password-btn');
+        const passwordId = button.dataset.passwordId;
+        this.copyPassword(passwordId);
+        return;
+      }
+      
+      // Handle remove password button
+      if (e.target.closest('.remove-password-btn')) {
+        e.preventDefault();
+        e.stopPropagation();
+        const button = e.target.closest('.remove-password-btn');
+        const passwordId = button.dataset.passwordId;
+        this.removePassword(passwordId);
+        return;
+      }
+    });
+  }
+
+  async copyPassword(passwordId) {
+    try {
+      const result = await window.electronAPI.getAllPasswords();
+      if (result.success) {
+        const password = result.passwords.find(p => p.id === passwordId);
+        if (password) {
+          await navigator.clipboard.writeText(password.password);
+          this.showNotification('Contraseña copiada al portapapeles', 'success');
+        }
+      }
+    } catch (error) {
+      console.error('Error copiando contraseña:', error);
+      this.showNotification('Error copiando contraseña', 'error');
+    }
+  }
+
+  async removePassword(passwordId) {
+    console.log('removePassword called with ID:', passwordId);
+    
+    // Prevent multiple confirmations
+    if (this._deletingPassword) {
+      console.log('Password deletion already in progress, ignoring duplicate call');
+      return;
+    }
+    
+    console.log('Showing confirmation dialog...');
+    const confirmed = confirm('¿Estás seguro de que quieres eliminar esta contraseña?');
+    console.log('User confirmed deletion:', confirmed);
+    
+    if (confirmed) {
+      this._deletingPassword = true;
+      try {
+        console.log('Proceeding with password deletion...');
+        const result = await window.electronAPI.removePasswordFromVault(passwordId);
+        if (result.success) {
+          this.showNotification(result.message, 'success');
+          await this.loadVaultCount();
+          await this.loadPasswordList();
+          // Update dashboard vault data
+          await this.loadVaultDashboardData();
+        } else {
+          this.showNotification(result.message, 'error');
+        }
+      } catch (error) {
+        console.error('Error eliminando contraseña:', error);
+        this.showNotification('Error eliminando contraseña', 'error');
+      } finally {
+        this._deletingPassword = false;
+        console.log('Password deletion process completed');
+      }
+    } else {
+      console.log('User cancelled password deletion');
     }
   }
 
   createPasswordItem(item, index) {
     const div = document.createElement('div');
     div.className = 'p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors duration-200';
+    div.dataset.passwordId = item.id;
     
     // Obtener información del sitio web de la etiqueta o generar predeterminado
     const websiteInfo = this.getWebsiteInfo(item.label);
@@ -890,30 +1399,21 @@ class CiberSegApp {
             <i class="${websiteInfo.icon} ${websiteInfo.textColor} text-sm"></i>
           </div>
           <div>
-            <div class="font-medium text-gray-800">${websiteInfo.name}</div>
-            <div class="text-sm text-gray-500">${websiteInfo.domain}</div>
+            <div class="font-medium text-gray-800">${item.label}</div>
+            <div class="text-sm text-gray-500">${item.username || item.website || websiteInfo.domain}</div>
           </div>
         </div>
         <div class="flex items-center gap-2">
           <div class="text-xs font-mono bg-white px-2 py-1 rounded border">••••••••</div>
-          <button class="p-1 text-gray-400 hover:text-gray-600 transition-colors" title="Copiar" data-copy-password="${index}">
+          <button class="copy-password-btn p-1 text-gray-400 hover:text-gray-600 transition-colors" title="Copiar" data-password-id="${item.id}">
             <i class="fas fa-copy text-sm"></i>
+          </button>
+          <button class="remove-password-btn p-1 text-gray-400 hover:text-red-600 transition-colors" title="Eliminar" data-password-id="${item.id}">
+            <i class="fas fa-trash text-sm"></i>
           </button>
         </div>
       </div>
     `;
-    
-    // Agregar funcionalidad de copia
-    const copyBtn = div.querySelector(`[data-copy-password="${index}"]`);
-    if (copyBtn) {
-      copyBtn.addEventListener('click', () => {
-        navigator.clipboard.writeText(item.password).then(() => {
-          this.showNotification('Contraseña copiada', 'success');
-        }).catch(() => {
-          this.showNotification('Error al copiar', 'error');
-        });
-      });
-    }
     
     return div;
   }
@@ -1041,35 +1541,549 @@ class CiberSegApp {
 
   viewVault() {
     this.showNotification('Abriendo bóveda de contraseñas...', 'info');
-    // Futuro: Abrir interfaz de bóveda
+    this.navigateToSection('passwords');
   }
 
-  addToVault() {
-    const passwordElement = document.getElementById('last-generated-password');
-    if (passwordElement && passwordElement.textContent !== '********************') {
-      const password = passwordElement.textContent;
-      const label = prompt('Ingrese un nombre para esta contraseña:');
-      if (label) {
-        this.storePassword(label, password);
-        this.showNotification(`Contraseña "${label}" agregada a la bóveda`, 'success');
+  async addToVault() {
+    console.log('addToVault function called');
+    
+    // Always show modal with empty password field to allow custom input
+    this.showAddToVaultModal('');
+  }
+
+  showAddToVaultModal(password = '') {
+    console.log('Opening modal with password:', password);
+    
+    const modal = document.getElementById('add-to-vault-modal');
+    const passwordInput = document.getElementById('vault-password');
+    const strengthIndicator = document.getElementById('password-strength-indicator');
+    const form = document.getElementById('add-to-vault-form');
+    const labelInput = document.getElementById('vault-label');
+    
+    console.log('Modal elements found:', {
+      modal: !!modal,
+      passwordInput: !!passwordInput,
+      strengthIndicator: !!strengthIndicator,
+      form: !!form,
+      labelInput: !!labelInput
+    });
+    
+    // Reset form
+    form.reset();
+    
+    // Always start with empty, editable password field
+    passwordInput.value = '';
+    passwordInput.dataset.generated = 'false';
+    passwordInput.readOnly = false;
+    passwordInput.disabled = false;
+    passwordInput.classList.remove('bg-gray-50');
+    
+    // Ensure all inputs are editable
+    const allInputs = form.querySelectorAll('input, textarea');
+    allInputs.forEach(input => {
+      input.readOnly = false;
+      input.disabled = false;
+    });
+    
+    console.log('Modal inputs state:', {
+      passwordReadOnly: passwordInput.readOnly,
+      passwordDisabled: passwordInput.disabled,
+      passwordValue: passwordInput.value
+    });
+    
+    // Show password strength indicator
+    strengthIndicator.classList.remove('hidden');
+    
+    // Show the modal
+    modal.classList.remove('hidden');
+    console.log('Modal shown');
+    
+    // Setup modal event listeners if not already done
+    this.setupAddToVaultModalEvents();
+    
+    // Update password strength after modal is visible
+    setTimeout(() => {
+      this.updatePasswordStrength(passwordInput.value);
+      labelInput.focus();
+      console.log('Modal setup complete, password readonly:', passwordInput.readOnly);
+    }, 100);
+  }
+
+  setupAddToVaultModalEvents() {
+    // Use a single event delegation approach for better performance
+    const modal = document.getElementById('add-to-vault-modal');
+    
+    // Only setup events once
+    if (modal._eventsSetup) return;
+    modal._eventsSetup = true;
+    
+    // Cache frequently used elements
+    const elements = {
+      labelInput: document.getElementById('vault-label'),
+      passwordInput: document.getElementById('vault-password'),
+      saveBtn: document.getElementById('save-to-vault')
+    };
+    
+    // Direct event listeners for better reliability
+    const cancelBtn = document.getElementById('cancel-add-vault');
+    const saveBtn = document.getElementById('save-to-vault');
+    const generateBtn = document.getElementById('generate-password-btn');
+    const clearBtn = document.getElementById('clear-password-btn');
+    const toggleBtn = document.getElementById('toggle-password-visibility');
+    
+    // Cancel button
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.closeAddToVaultModal();
+      });
+    }
+    
+    // Save button
+    if (saveBtn) {
+      saveBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.savePasswordToVault();
+      });
+    }
+    
+    // Generate password button
+    if (generateBtn) {
+      generateBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.generatePasswordForVault();
+      });
+    }
+    
+    // Clear password button
+    if (clearBtn) {
+      clearBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.clearPasswordField();
+      });
+    }
+    
+    // Toggle password visibility
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.togglePasswordVisibility();
+      });
+    }
+    
+    // Backdrop click disabled - modal can only be closed with Cancel button
+    
+    // Keyboard events with passive listeners
+    modal.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        this.closeAddToVaultModal();
+      } else if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        if (!elements.saveBtn.disabled) {
+          this.savePasswordToVault();
+        }
+      }
+    }, { passive: false });
+    
+    // Optimized validation with throttling
+    let validationTimeout;
+    let strengthTimeout;
+    
+    const validateForm = () => {
+      clearTimeout(validationTimeout);
+      validationTimeout = setTimeout(() => {
+        this.validateVaultForm();
+      }, 150); // Increased debounce time
+    };
+    
+    const calculateStrength = () => {
+      clearTimeout(strengthTimeout);
+      strengthTimeout = setTimeout(() => {
+        const password = elements.passwordInput.value;
+        this.updatePasswordStrength(password);
+        this.updatePasswordRequirements(password);
+      }, 100); // Reduced debounce time for better responsiveness
+    };
+    
+    // Use input event for better performance
+    elements.labelInput.addEventListener('input', validateForm, { passive: true });
+    elements.passwordInput.addEventListener('input', (e) => {
+      validateForm();
+      calculateStrength();
+    }, { passive: true });
+    
+    // Add click and focus events for debugging
+    elements.passwordInput.addEventListener('click', (e) => {
+      // Password input clicked
+    });
+    
+    elements.passwordInput.addEventListener('focus', (e) => {
+      // Password input focused
+    });
+  }
+
+  closeAddToVaultModal() {
+    // Use requestAnimationFrame for better performance
+    requestAnimationFrame(() => {
+      const modal = document.getElementById('add-to-vault-modal');
+      const form = document.getElementById('add-to-vault-form');
+      const strengthIndicator = document.getElementById('password-strength-indicator');
+      const passwordInput = document.getElementById('vault-password');
+      const labelError = document.getElementById('label-error');
+      const passwordError = document.getElementById('password-error');
+      const labelInput = document.getElementById('vault-label');
+      
+      // Hide modal first for immediate visual feedback
+      modal.classList.add('hidden');
+      
+      // Batch DOM operations
+      form.reset();
+      strengthIndicator.classList.add('hidden');
+      
+      // Reset password input state
+      passwordInput.dataset.generated = 'false';
+      passwordInput.readOnly = false;
+      passwordInput.classList.remove('bg-gray-50', 'border-red-500');
+      
+      // Clear error messages efficiently
+      if (labelError) {
+        labelError.textContent = '';
+        labelError.classList.add('hidden');
+      }
+      if (passwordError) {
+        passwordError.textContent = '';
+        passwordError.classList.add('hidden');
+      }
+      
+      // Reset input borders
+      labelInput.classList.remove('border-red-500');
+    });
+  }
+
+  togglePasswordVisibility() {
+    const passwordInput = document.getElementById('vault-password');
+    const toggleBtn = document.getElementById('toggle-password-visibility');
+    const icon = toggleBtn.querySelector('i');
+    
+    const type = passwordInput.type === 'password' ? 'text' : 'password';
+    passwordInput.type = type;
+    icon.className = type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+  }
+
+  validateVaultForm() {
+    const labelInput = document.getElementById('vault-label');
+    const passwordInput = document.getElementById('vault-password');
+    const saveBtn = document.getElementById('save-to-vault');
+    const labelError = document.getElementById('label-error');
+    const passwordError = document.getElementById('password-error');
+    
+    let isValid = true;
+    
+    // Validate label
+    const label = labelInput.value.trim();
+    if (label.length === 0) {
+      isValid = false;
+      labelInput.classList.add('border-red-500');
+      if (labelError) {
+        labelError.textContent = 'El nombre es requerido';
+        labelError.classList.remove('hidden');
+      }
+    } else if (label.length < 2) {
+      isValid = false;
+      labelInput.classList.add('border-red-500');
+      if (labelError) {
+        labelError.textContent = 'El nombre debe tener al menos 2 caracteres';
+        labelError.classList.remove('hidden');
       }
     } else {
-      this.showNotification('No hay contraseña generada para agregar', 'warning');
+      labelInput.classList.remove('border-red-500');
+      if (labelError) {
+        labelError.textContent = '';
+        labelError.classList.add('hidden');
+      }
+    }
+    
+    // Validate password
+    const password = passwordInput.value;
+    if (password.length === 0) {
+      isValid = false;
+      passwordInput.classList.add('border-red-500');
+      if (passwordError) {
+        passwordError.textContent = 'La contraseña es requerida';
+        passwordError.classList.remove('hidden');
+      }
+    } else if (password.length < 6) {
+      isValid = false;
+      passwordInput.classList.add('border-red-500');
+      if (passwordError) {
+        passwordError.textContent = 'La contraseña debe tener al menos 6 caracteres';
+        passwordError.classList.remove('hidden');
+      }
+    } else {
+      passwordInput.classList.remove('border-red-500');
+      if (passwordError) {
+        passwordError.textContent = '';
+        passwordError.classList.add('hidden');
+      }
+    }
+    
+    saveBtn.disabled = !isValid;
+    return isValid;
+  }
+
+  generatePasswordForVault() {
+    try {
+      // Get current password generation settings
+      const length = parseInt(document.getElementById('password-length')?.value || 16);
+      const includeUppercase = document.getElementById('include-uppercase')?.checked || true;
+      const includeLowercase = document.getElementById('include-lowercase')?.checked || true;
+      const includeNumbers = document.getElementById('include-numbers')?.checked || true;
+      const includeSymbols = document.getElementById('include-symbols')?.checked || true;
+      const excludeSimilar = document.getElementById('exclude-similar')?.checked || false;
+      const excludeAmbiguous = document.getElementById('exclude-ambiguous')?.checked || false;
+
+      // Generate password using the same logic as generateNewPassword
+      let charset = '';
+      if (includeUppercase) charset += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      if (includeLowercase) charset += 'abcdefghijklmnopqrstuvwxyz';
+      if (includeNumbers) charset += '0123456789';
+      if (includeSymbols) charset += '!@#$%^&*()_+-=[]{}|;:,.<>?';
+
+      // Apply exclusions
+      if (excludeSimilar) {
+        charset = charset.replace(/[il1Lo0O]/g, '');
+      }
+      if (excludeAmbiguous) {
+        charset = charset.replace(/[{}[\]()\/\\'";:.,<>?]/g, '');
+      }
+
+      if (charset.length === 0) {
+        this.showNotification('Debe seleccionar al menos un tipo de carácter', 'error');
+        return;
+      }
+
+      // Generate password
+      let password = '';
+      for (let i = 0; i < length; i++) {
+        password += charset.charAt(Math.floor(Math.random() * charset.length));
+      }
+      
+      // Update the password input
+      const passwordInput = document.getElementById('vault-password');
+      passwordInput.value = password;
+      passwordInput.dataset.generated = 'true';
+      passwordInput.readOnly = false; // Keep editable
+      passwordInput.classList.remove('bg-gray-50'); // Remove gray background
+      
+      // Update strength indicator
+      this.updatePasswordStrength(password);
+      this.updatePasswordRequirements(password);
+      
+      // Trigger validation
+      this.validateVaultForm();
+      
+      this.showNotification(`Nueva contraseña generada (${length} caracteres)`, 'success');
+    } catch (error) {
+      console.error('Error generating password for vault:', error);
+      this.showNotification('Error al generar contraseña', 'error');
     }
   }
 
-  storePassword(label, password) {
-    // Almacenar en localStorage por ahora
-    const stored = JSON.parse(localStorage.getItem('password-vault') || '[]');
-    stored.push({ label, password, date: new Date().toISOString() });
-    localStorage.setItem('password-vault', JSON.stringify(stored));
+  useCurrentPasswordForVault() {
+    // Function removed - no longer needed
+  }
+
+  clearPasswordField() {
+    const passwordInput = document.getElementById('vault-password');
     
-    // Actualizar última actividad
-    localStorage.setItem('last-vault-activity', new Date().toISOString());
+    // Clear the password field
+    passwordInput.value = '';
+    passwordInput.dataset.generated = 'false';
+    passwordInput.readOnly = false;
+    passwordInput.classList.remove('bg-gray-50');
     
+    // Update strength indicator
+    this.updatePasswordStrength('');
+    this.updatePasswordRequirements('');
+    
+    // Trigger validation
+    this.validateVaultForm();
+    
+    // Focus on the password input
+    passwordInput.focus();
+    
+    this.showNotification('Campo de contraseña limpiado', 'info');
+  }
+
+  updatePasswordStrength(password) {
+    const strengthBar = document.getElementById('strength-bar');
+    const strengthText = document.getElementById('strength-text');
+    
+    if (!strengthBar || !strengthText) return;
+    
+    // Calculate strength with improved algorithm
+    let score = 0;
+    
+    // Length scoring (more generous for longer passwords)
+    if (password.length >= 32) score += 40;
+    else if (password.length >= 24) score += 35;
+    else if (password.length >= 16) score += 30;
+    else if (password.length >= 12) score += 25;
+    else if (password.length >= 8) score += 15;
+    else if (password.length >= 6) score += 10;
+    else if (password.length >= 4) score += 5;
+    
+    // Character variety scoring
+    if (/[a-z]/.test(password)) score += 8;
+    if (/[A-Z]/.test(password)) score += 8;
+    if (/[0-9]/.test(password)) score += 8;
+    if (/[^A-Za-z0-9]/.test(password)) score += 12;
+    
+    // Bonus for multiple character types
+    const charTypes = [
+      /[a-z]/.test(password),
+      /[A-Z]/.test(password),
+      /[0-9]/.test(password),
+      /[^A-Za-z0-9]/.test(password)
+    ].filter(Boolean).length;
+    
+    if (charTypes >= 4) score += 15;
+    else if (charTypes >= 3) score += 10;
+    else if (charTypes >= 2) score += 5;
+    
+    // Penalties for patterns
+    if (/(.)\1{2,}/.test(password)) score -= 15; // Repeated characters
+    if (/123|abc|qwe|password|admin/i.test(password)) score -= 20; // Common patterns
+    if (password.length > 0 && password.length < 8) score -= 10; // Too short
+    
+    // Ensure score is within bounds
+    score = Math.max(0, Math.min(100, score));
+    
+    // Update visual indicator
+    strengthBar.style.width = `${score}%`;
+    
+    if (score >= 85) {
+      strengthBar.className = 'h-2 rounded-full transition-all duration-300 bg-green-500';
+      strengthText.textContent = 'Muy Fuerte';
+      strengthText.className = 'text-xs font-medium text-green-600';
+    } else if (score >= 70) {
+      strengthBar.className = 'h-2 rounded-full transition-all duration-300 bg-green-400';
+      strengthText.textContent = 'Fuerte';
+      strengthText.className = 'text-xs font-medium text-green-600';
+    } else if (score >= 50) {
+      strengthBar.className = 'h-2 rounded-full transition-all duration-300 bg-yellow-500';
+      strengthText.textContent = 'Media';
+      strengthText.className = 'text-xs font-medium text-yellow-600';
+    } else if (score >= 25) {
+      strengthBar.className = 'h-2 rounded-full transition-all duration-300 bg-orange-500';
+      strengthText.textContent = 'Débil';
+      strengthText.className = 'text-xs font-medium text-orange-600';
+    } else {
+      strengthBar.className = 'h-2 rounded-full transition-all duration-300 bg-red-500';
+      strengthText.textContent = 'Muy Débil';
+      strengthText.className = 'text-xs font-medium text-red-600';
+    }
+  }
+
+  updatePasswordRequirements(password) {
+    const requirements = {
+      'req-length': password.length >= 8,
+      'req-uppercase': /[A-Z]/.test(password),
+      'req-lowercase': /[a-z]/.test(password),
+      'req-number': /[0-9]/.test(password),
+      'req-special': /[^A-Za-z0-9]/.test(password),
+      'req-unique': !/(.)\1{2,}/.test(password)
+    };
+    
+    Object.entries(requirements).forEach(([reqId, met]) => {
+      const reqElement = document.getElementById(reqId);
+      if (!reqElement) return;
+      
+      const checkIcon = reqElement.querySelector('.fa-check');
+      const timesIcon = reqElement.querySelector('.fa-times');
+      
+      if (met) {
+        if (checkIcon) checkIcon.classList.remove('hidden');
+        if (timesIcon) timesIcon.classList.add('hidden');
+      } else {
+        if (checkIcon) checkIcon.classList.add('hidden');
+        if (timesIcon) timesIcon.classList.remove('hidden');
+      }
+    });
+  }
+
+  async savePasswordToVault() {
+    const form = document.getElementById('add-to-vault-form');
+    const formData = new FormData(form);
+    
+    const passwordData = {
+      label: formData.get('label').trim(),
+      username: formData.get('username').trim(),
+      website: formData.get('website').trim(),
+      notes: formData.get('notes').trim(),
+      password: formData.get('password')
+    };
+    
+    // Validate required fields
+    if (!passwordData.label) {
+      this.showNotification('El nombre de la contraseña es requerido', 'error');
+      return;
+    }
+    
+    // Show loading state
+    const saveBtn = document.getElementById('save-to-vault');
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Guardando...';
+    saveBtn.disabled = true;
+    
+    try {
+      console.log('Saving password to vault:', passwordData);
+      await this.storePassword(passwordData.label, passwordData.password, passwordData.username, passwordData.website, passwordData.notes);
+      
+      // Close modal on success
+      document.getElementById('add-to-vault-modal').classList.add('hidden');
+      form.reset();
+      document.getElementById('password-strength-indicator').classList.add('hidden');
+      
+    } catch (error) {
+      console.error('Error saving password:', error);
+      this.showNotification('Error guardando la contraseña', 'error');
+    } finally {
+      // Restore button state
+      saveBtn.innerHTML = originalText;
+      saveBtn.disabled = false;
+    }
+  }
+
+  async storePassword(label, password, username = '', website = '', notes = '') {
+    try {
+      const result = await window.electronAPI.addPasswordToVault({
+        label,
+        password,
+        username,
+        website,
+        notes
+      });
+      
+      if (result.success) {
+        this.showNotification(result.message, 'success');
     // Actualizar toda la información de bóveda
-    this.loadVaultCount();
-    this.loadPasswordList();
+        await this.loadVaultCount();
+        await this.loadPasswordList();
+        // Update dashboard vault data
+        await this.loadVaultDashboardData();
+      } else {
+        this.showNotification(result.message, 'error');
+      }
+    } catch (error) {
+      console.error('Error almacenando contraseña:', error);
+      this.showNotification('Error almacenando contraseña', 'error');
+    }
   }
 
   importVault() {
@@ -1077,25 +2091,23 @@ class CiberSegApp {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
-    input.onchange = (e) => {
+    input.onchange = async (e) => {
       const file = e.target.files[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
           try {
-            const importData = JSON.parse(e.target.result);
-            if (importData.vault && Array.isArray(importData.vault)) {
-              const existing = JSON.parse(localStorage.getItem('password-vault') || '[]');
-              const merged = [...existing, ...importData.vault];
-              localStorage.setItem('password-vault', JSON.stringify(merged));
-              localStorage.setItem('last-vault-activity', new Date().toISOString());
-              this.loadVaultCount();
-              this.showNotification(`Importadas ${importData.vault.length} contraseñas`, 'success');
+            const result = await window.electronAPI.importVault(e.target.result);
+            if (result.success) {
+              this.showNotification(result.message, 'success');
+              await this.loadVaultCount();
+              await this.loadPasswordList();
             } else {
-              this.showNotification('Formato de archivo inválido', 'error');
+              this.showNotification(result.message, 'error');
             }
           } catch (error) {
-            this.showNotification('Error al importar archivo', 'error');
+            console.error('Error importando bóveda:', error);
+            this.showNotification('Error importando archivo', 'error');
           }
         };
         reader.readAsText(file);
@@ -1104,49 +2116,29 @@ class CiberSegApp {
     input.click();
   }
 
-  openVaultSettings() {
-    this.showNotification('Configuración de bóveda - Próximamente', 'info');
-    // Futuro: Abrir modal de configuración de bóveda
-  }
-
-  applyPasswordSettings() {
-    const length = document.getElementById('password-length')?.value || 16;
-    const lengthValue = document.getElementById('length-value');
-    if (lengthValue) lengthValue.textContent = length;
-    
-    this.showNotification('Configuración guardada', 'success');
-  }
-
-  exportVault() {
-    const stored = JSON.parse(localStorage.getItem('password-vault') || '[]');
-    if (stored.length === 0) {
-      this.showNotification('No hay contraseñas para exportar', 'warning');
-      return;
-    }
-    
-    const exportData = {
-      vault: stored,
-      exportDate: new Date().toISOString(),
-      totalPasswords: stored.length,
-      version: '1.0'
-    };
-    
-    const dataStr = JSON.stringify(exportData, null, 2);
-    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+  async exportVault() {
+    try {
+      const result = await window.electronAPI.exportVault('json');
+      
+      if (result.success) {
+        const dataBlob = new Blob([result.data], {type: 'application/json'});
     const url = URL.createObjectURL(dataBlob);
     
     const link = document.createElement('a');
     link.href = url;
-    link.download = `password-vault-${new Date().toISOString().split('T')[0]}.json`;
+        link.download = result.filename;
     link.click();
     
     URL.revokeObjectURL(url);
     
-    // Actualizar última actividad
-    localStorage.setItem('last-vault-activity', new Date().toISOString());
-    this.updateVaultInfo();
-    
     this.showNotification('Bóveda exportada exitosamente', 'success');
+      } else {
+        this.showNotification(result.message, 'error');
+      }
+    } catch (error) {
+      console.error('Error exportando bóveda:', error);
+      this.showNotification('Error exportando bóveda', 'error');
+    }
   }
 
   // Métodos de Términos y Condiciones
@@ -1289,15 +2281,24 @@ class CiberSegApp {
         this.keyloggerStatus.startTime = new Date(result.startTime);
         this.updateKeyloggerStatus(true);
         
+        // Update module buttons only (dashboard buttons are handled by updateKeyloggerDashboardStatus)
         const startBtn = document.getElementById('keylogger-start-btn');
         const stopBtn = document.getElementById('keylogger-stop-btn');
-        if (startBtn) startBtn.disabled = true;
-        if (stopBtn) stopBtn.disabled = false;
+        
+        if (startBtn) {
+          startBtn.disabled = true;
+        }
+        if (stopBtn) {
+          stopBtn.disabled = false;
+        }
         
         this.startKeyloggerSessionTimer();
         this.startKeyloggerPolling();
         this.addKeyloggerLogEntry('Sistema', 'Monitoreo iniciado', 'info');
         this.showNotification('Keylogger iniciado correctamente', 'success');
+        
+        // Refresh dashboard
+        await this.loadKeyloggerStatus();
       } else {
         this.showNotification(result.message, 'error');
       }
@@ -1315,10 +2316,16 @@ class CiberSegApp {
         this.keyloggerStatus.isActive = false;
         this.updateKeyloggerStatus(false);
         
+        // Update module buttons only (dashboard buttons are handled by updateKeyloggerDashboardStatus)
         const startBtn = document.getElementById('keylogger-start-btn');
         const stopBtn = document.getElementById('keylogger-stop-btn');
-        if (startBtn) startBtn.disabled = false;
-        if (stopBtn) stopBtn.disabled = true;
+        
+        if (startBtn) {
+          startBtn.disabled = false;
+        }
+        if (stopBtn) {
+          stopBtn.disabled = true;
+        }
         
         if (this.keyloggerStatus.sessionTimer) {
           clearInterval(this.keyloggerStatus.sessionTimer);
@@ -1332,6 +2339,9 @@ class CiberSegApp {
         
         this.addKeyloggerLogEntry('Sistema', 'Monitoreo detenido', 'info');
         this.showNotification('Keylogger detenido correctamente', 'success');
+        
+        // Refresh dashboard
+        await this.loadKeyloggerStatus();
       } else {
         this.showNotification(result.message, 'error');
       }
@@ -1358,11 +2368,29 @@ class CiberSegApp {
         statusText.textContent = 'Activo';
         statusText.className = 'text-sm text-green-600 font-semibold';
         console.log('Status updated to ACTIVE'); // Debug log
+        
+        // Add real-time activity indicator
+        this.addRealTimeActivityIndicator();
       } else {
-        statusIndicator.className = 'w-3 h-3 bg-red-500 rounded-full animate-pulse';
+        statusIndicator.className = 'w-3 h-3 bg-red-500 rounded-full';
         statusText.textContent = 'Inactivo';
         statusText.className = 'text-sm text-red-600 font-semibold';
         console.log('Status updated to INACTIVE'); // Debug log
+        
+        // Remove real-time activity indicator
+        this.removeRealTimeActivityIndicator();
+        
+        // Reset log display when inactive
+        const logDisplay = document.getElementById('keylogger-log-display');
+        if (logDisplay) {
+          logDisplay.innerHTML = `
+            <div class="text-center text-gray-400 py-8">
+              <i class="fas fa-keyboard text-4xl mb-4"></i>
+              <p class="text-lg">No hay actividad registrada</p>
+              <p class="text-sm">Inicia el monitoreo para comenzar a capturar teclas</p>
+            </div>
+          `;
+        }
       }
     } else {
       console.error('Main status elements not found:', { statusIndicator, statusText });
@@ -1381,6 +2409,25 @@ class CiberSegApp {
       }
     } else {
       console.error('Dashboard status elements not found:', { dashboardStatusIndicator, dashboardStatusText });
+    }
+  }
+
+  addRealTimeActivityIndicator() {
+    // Add a real-time activity indicator to show when data is being captured
+    const statusContainer = document.querySelector('#keylogger-status-indicator').parentElement;
+    if (statusContainer && !statusContainer.querySelector('.real-time-indicator')) {
+      const indicator = document.createElement('div');
+      indicator.className = 'real-time-indicator text-xs text-green-400 animate-pulse';
+      indicator.textContent = 'Capturando...';
+      statusContainer.appendChild(indicator);
+    }
+  }
+
+  removeRealTimeActivityIndicator() {
+    // Remove the real-time activity indicator
+    const indicator = document.querySelector('.real-time-indicator');
+    if (indicator) {
+      indicator.remove();
     }
   }
 
@@ -1404,15 +2451,26 @@ class CiberSegApp {
           this.updateKeyloggerStatus(status.isRunning);
         }
         
-        if (status.logContent && status.logContent !== this.keyloggerStatus.lastLogContent) {
-          console.log('New log content detected:', status.logContent.slice(-100));
-          this.keyloggerStatus.lastLogContent = status.logContent;
+        // Update dashboard status
+        this.updateKeyloggerDashboardStatus(status);
+        
+        // Always update stats for real-time feedback, even if content hasn't changed
+        if (status.logContent) {
+          console.log('Updating log content:', status.logContent.slice(-50));
           this.parseKeyloggerContent(status.logContent);
+        }
+        
+        // Force stats update for real-time display
+        this.updateKeyloggerStats();
+        
+        // Always update the last log content to ensure we track changes
+        if (status.logContent) {
+          this.keyloggerStatus.lastLogContent = status.logContent;
         }
       } catch (error) {
         console.error('Error polling keylogger status:', error);
       }
-    }, 1000); // Poll every 1 second for more responsive updates
+    }, 500); // Poll every 500ms for more responsive real-time updates
   }
 
   updateKeyloggerSessionStats() {
@@ -1436,21 +2494,28 @@ class CiberSegApp {
   parseKeyloggerContent(content) {
     if (!content) return;
     
+    console.log('parseKeyloggerContent called with content:', content.slice(-50));
+    
     // Contar caracteres y palabras más precisamente
     const charCount = content.length;
     // Contar palabras dividiendo por espacios y filtrando cadenas vacías
     const words = content.split(/\s+/).filter(word => word.length > 0);
     const wordCount = words.length;
     
+    // Update stats immediately
     this.keyloggerStatus.stats.totalKeys = charCount;
     this.keyloggerStatus.stats.totalWords = wordCount;
+    
+    // Update display immediately for real-time feedback
     this.updateKeyloggerStats();
     
-    console.log('Content parsed:', { charCount, wordCount, content: content.slice(-50) });
+    console.log('Real-time content parsed:', { charCount, wordCount, content: content.slice(-50) });
     
-    // Actualizar pantalla de registro - limpiar entradas capturadas anteriores y mostrar solo la última
+    // Actualizar pantalla de registro con formato de terminal original
     const logDisplay = document.getElementById('keylogger-log-display');
     if (logDisplay) {
+      console.log('Updating log display with content:', content.slice(-50));
+      
       // Limpiar marcador de posición si existe
       if (logDisplay.querySelector('.text-center')) {
         logDisplay.innerHTML = '';
@@ -1464,17 +2529,24 @@ class CiberSegApp {
         }
       });
       
-      // Agregar nuevo contenido como una sola entrada
+      // Agregar nuevo contenido como una sola entrada con formato de terminal
       const timestamp = new Date().toLocaleTimeString();
       const logEntry = document.createElement('div');
       logEntry.className = 'mb-1 text-xs text-green-400';
       
-      // Mostrar el contenido completo sin truncamiento
-      logEntry.innerHTML = `<span class="text-gray-500">[${timestamp}]</span> <span class="font-semibold">Capturado:</span> ${content}`;
+      // Mostrar el contenido completo sin truncamiento con formato de terminal
+      logEntry.innerHTML = `<span class="text-gray-500">[${timestamp}]</span> <span class="font-semibold text-green-300">Capturado:</span> <span class="text-white">${content}</span>`;
       
       logDisplay.appendChild(logEntry);
       logDisplay.scrollTop = logDisplay.scrollHeight;
+      
+      console.log('Log display updated successfully');
+    } else {
+      console.error('Log display element not found');
     }
+    
+    // Add visual feedback to stats elements
+    this.addStatsUpdateAnimation();
   }
 
   updateKeyloggerStats() {
@@ -1507,6 +2579,25 @@ class CiberSegApp {
       dashboardWordsCount.textContent = this.keyloggerStatus.stats.totalWords;
       console.log('Dashboard words count updated to:', this.keyloggerStatus.stats.totalWords);
     }
+  }
+
+  addStatsUpdateAnimation() {
+    // Add visual feedback to stats elements when they update
+    const keysCount = document.getElementById('keylogger-keys-count');
+    const wordsCount = document.getElementById('keylogger-words-count');
+    const dashboardKeysCount = document.getElementById('keylogger-dashboard-keys-count');
+    const dashboardWordsCount = document.getElementById('keylogger-dashboard-words-count');
+    
+    const elements = [keysCount, wordsCount, dashboardKeysCount, dashboardWordsCount];
+    
+    elements.forEach(element => {
+      if (element) {
+        element.classList.add('animate-pulse', 'text-green-400');
+        setTimeout(() => {
+          element.classList.remove('animate-pulse', 'text-green-400');
+        }, 500);
+      }
+    });
   }
 
   addKeyloggerLogEntry(type, content, level = 'info') {
