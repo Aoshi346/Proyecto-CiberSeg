@@ -23,7 +23,7 @@ let antivirusStatus = {
   startTime: null
 };
 
-// Storage for scan history and app data
+// Almacenamiento para historial de escaneos y datos de la aplicación
 const appDataPath = path.join(__dirname, 'app_data.json');
 let appData = {
   lastScanDate: null,
@@ -33,7 +33,7 @@ let appData = {
   totalThreatsFound: 0
 };
 
-// Load app data on startup
+// Cargar datos de la aplicación al inicio
 function loadAppData() {
   try {
     if (fs.existsSync(appDataPath)) {
@@ -46,7 +46,7 @@ function loadAppData() {
   }
 }
 
-// Save app data
+// Guardar datos de la aplicación
 function saveAppData() {
   try {
     fs.writeFileSync(appDataPath, JSON.stringify(appData, null, 2));
@@ -90,7 +90,7 @@ function createWindow() {
     autoHideMenuBar: true
   });
   
-  // Enable developer tools shortcut
+  // Habilitar atajo de herramientas de desarrollador
   win.webContents.on('before-input-event', (event, input) => {
     if (input.control && input.shift && input.key.toLowerCase() === 'i') {
       win.webContents.toggleDevTools();
@@ -111,7 +111,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  // Load app data on startup
+  // Cargar datos de la aplicación al inicio
   loadAppData();
   
   // Eliminar el menú global de la aplicación (Archivo/Editar/Ver...)
@@ -124,7 +124,7 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// Helper function to run Python scripts
+// Función auxiliar para ejecutar scripts de Python
 async function runPythonScript(scriptPath, args = [], enableProgressStreaming = false, isAntivirus = false) {
   return new Promise((resolve, reject) => {
     const pythonProcess = spawn('python', [scriptPath, ...args], {
@@ -132,7 +132,7 @@ async function runPythonScript(scriptPath, args = [], enableProgressStreaming = 
       stdio: ['pipe', 'pipe', 'pipe']
     });
 
-    // Store antivirus process reference if this is an antivirus scan
+    // Almacenar referencia del proceso antivirus si este es un escaneo antivirus
     if (isAntivirus) {
       antivirusProcess = pythonProcess;
       antivirusStatus.isRunning = true;
@@ -148,16 +148,16 @@ async function runPythonScript(scriptPath, args = [], enableProgressStreaming = 
       console.log('Python stdout received:', output.substring(0, 100) + '...');
       
       if (enableProgressStreaming) {
-        // Handle progress streaming - each line should be a JSON progress update
+        // Manejar streaming de progreso - cada línea debe ser una actualización de progreso JSON
         progressBuffer += output;
         const lines = progressBuffer.split('\n');
-        progressBuffer = lines.pop(); // Keep incomplete line in buffer
+        progressBuffer = lines.pop(); // Mantener línea incompleta en buffer
         
         lines.forEach(line => {
           if (line.trim()) {
             try {
               const progressData = JSON.parse(line.trim());
-              // Send progress update to renderer
+              // Enviar actualización de progreso al renderer
               console.log('Sending progress update:', progressData);
               const mainWindow = BrowserWindow.getAllWindows()[0];
               if (mainWindow && mainWindow.webContents) {

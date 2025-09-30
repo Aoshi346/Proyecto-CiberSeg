@@ -1,121 +1,121 @@
-# CiberSeg Antivirus Module
+# Módulo Antivirus CiberSeg
 
-This module provides antivirus functionality using the VirusTotal API for comprehensive malware detection.
+Este módulo proporciona funcionalidad antivirus utilizando la API de VirusTotal para detección integral de malware.
 
-## Setup Instructions
+## Instrucciones de Configuración
 
-### 1. Get VirusTotal API Key
+### 1. Obtener Clave API de VirusTotal
 
-1. Go to [VirusTotal](https://www.virustotal.com/)
-2. Create a free account
-3. Go to your profile settings
-4. Generate an API key
+1. Ve a [VirusTotal](https://www.virustotal.com/)
+2. Crea una cuenta gratuita
+3. Ve a la configuración de tu perfil
+4. Genera una clave API
 
-### 2. Configure API Key
+### 2. Configurar Clave API
 
-You have two options to configure your API key:
+Tienes dos opciones para configurar tu clave API:
 
-#### Option A: Environment Variable (Recommended)
+#### Opción A: Variable de Entorno (Recomendado)
 ```bash
 # Windows
 set VIRUSTOTAL_API_KEY=ab84f5f3146a5c18429112267f85a1007d64756dd1940efedaf7d2cf6466ca47
 
 # Linux/Mac
-export VIRUSTOTAL_API_KEY=your_api_key_here
+export VIRUSTOTAL_API_KEY=tu_clave_api_aqui
 ```
 
-#### Option B: Configuration File
-1. Copy `config.py.example` to `config.py`
-2. Replace `ab84f5f3146a5c18429112267f85a1007d64756dd1940efedaf7d2cf6466ca47` with your actual API key
+#### Opción B: Archivo de Configuración
+1. Copia `config.py.example` a `config.py`
+2. Reemplaza `ab84f5f3146a5c18429112267f85a1007d64756dd1940efedaf7d2cf6466ca47` con tu clave API real
 
-### 3. Install Dependencies
+### 3. Instalar Dependencias
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Usage
+## Uso
 
-### Command Line Usage
+### Uso desde Línea de Comandos
 
 ```bash
-# Scan a specific file
-python antivirus.py scan-file --file "path/to/file.exe"
+# Escanear un archivo específico
+python antivirus.py scan-file --file "ruta/al/archivo.exe"
 
-# Scan a directory
-python antivirus.py scan --directory "path/to/directory"
+# Escanear un directorio
+python antivirus.py scan --directory "ruta/al/directorio"
 
-# Quick system scan (common directories)
+# Escaneo rápido del sistema (directorios comunes)
 python antivirus.py scan --scan-type quick
 
-# Get antivirus status
+# Obtener estado del antivirus
 python antivirus.py status
 
-# Get scan statistics
+# Obtener estadísticas de escaneo
 python antivirus.py stats
 
-# Update database (placeholder)
+# Actualizar base de datos (placeholder)
 python antivirus.py update-db
 ```
 
-### API Integration
+### Integración API
 
-The module is designed to work with the Electron main process through JSON output.
+El módulo está diseñado para trabajar con el proceso principal de Electron a través de salida JSON.
 
-## Features
+## Características
 
-- **File Hash Scanning**: Fast scanning using SHA256 hashes
-- **File Upload Scanning**: Upload files for comprehensive analysis
-- **Directory Scanning**: Scan entire directories recursively
-- **Real-time Results**: Get immediate scan results
-- **Threat Detection**: Identify malware using 70+ antivirus engines
-- **Statistics Tracking**: Track scan history and statistics
+- **Escaneo por Hash de Archivo**: Escaneo rápido usando hashes SHA256
+- **Escaneo por Subida de Archivo**: Subir archivos para análisis integral
+- **Escaneo de Directorios**: Escanear directorios completos recursivamente
+- **Resultados en Tiempo Real**: Obtener resultados de escaneo inmediatos
+- **Detección de Amenazas**: Identificar malware usando más de 70 motores antivirus
+- **Seguimiento de Estadísticas**: Rastrear historial de escaneos y estadísticas
 
-## API Limits
+## Límites de API
 
-- **Free Tier**: 4 requests per minute, 500 requests per day
-- **File Size Limit**: 32MB maximum file size
-- **Rate Limiting**: Built-in delays to respect API limits
+- **Nivel Gratuito**: 4 solicitudes por minuto, 500 solicitudes por día
+- **Límite de Tamaño de Archivo**: 32MB tamaño máximo de archivo
+- **Limitación de Velocidad**: Retrasos integrados para respetar límites de API
 
-## Error Handling
+## Manejo de Errores
 
-The module includes comprehensive error handling for:
-- Network connectivity issues
-- API rate limiting
-- File access errors
-- Invalid API keys
-- Large file uploads
+El módulo incluye manejo integral de errores para:
+- Problemas de conectividad de red
+- Limitación de velocidad de API
+- Errores de acceso a archivos
+- Claves API inválidas
+- Subidas de archivos grandes
 
-## Security Notes
+## Notas de Seguridad
 
-- API keys are stored securely
-- File uploads are temporary and deleted after scanning
-- No sensitive data is logged
-- All communications use HTTPS
+- Las claves API se almacenan de forma segura
+- Las subidas de archivos son temporales y se eliminan después del escaneo
+- No se registran datos sensibles
+- Todas las comunicaciones usan HTTPS
 
-## Troubleshooting
+## Solución de Problemas
 
-### Common Issues
+### Problemas Comunes
 
-1. **"No VirusTotal API key provided"**
-   - Ensure your API key is set correctly
-   - Check environment variables or config file
+1. **"No se proporcionó clave API de VirusTotal"**
+   - Asegúrate de que tu clave API esté configurada correctamente
+   - Verifica las variables de entorno o archivo de configuración
 
-2. **"File too large"**
-   - VirusTotal has a 32MB file size limit
-   - Compress or split large files
+2. **"Archivo demasiado grande"**
+   - VirusTotal tiene un límite de tamaño de archivo de 32MB
+   - Comprime o divide archivos grandes
 
-3. **"API rate limit exceeded"**
-   - Wait a few minutes before retrying
-   - Consider upgrading to a paid VirusTotal plan
+3. **"Límite de velocidad de API excedido"**
+   - Espera unos minutos antes de reintentar
+   - Considera actualizar a un plan pagado de VirusTotal
 
-4. **"Scan timeout"**
-   - Large files may take longer to scan
-   - Check your internet connection
+4. **"Tiempo de espera del escaneo"**
+   - Los archivos grandes pueden tardar más en escanearse
+   - Verifica tu conexión a internet
 
-### Debug Mode
+### Modo Debug
 
-Enable debug logging by setting the log level:
+Habilita el registro de debug estableciendo el nivel de log:
 ```python
 logging.basicConfig(level=logging.DEBUG)
 ```

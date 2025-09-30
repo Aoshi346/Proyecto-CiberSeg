@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-CiberSeg Antivirus Module
-Python-based antivirus scanner using VirusTotal API
+Módulo Antivirus CiberSeg
+Escáner antivirus basado en Python usando la API de VirusTotal
 """
 
 import os
@@ -17,22 +17,22 @@ import logging
 import threading
 import queue
 
-# Try to import config, fallback to environment variables
+# Intentar importar config, usar variables de entorno como respaldo
 try:
     from config import VIRUSTOTAL_API_KEY, MAX_FILE_SIZE_MB, SCAN_TIMEOUT_SECONDS, API_RATE_LIMIT_DELAY
 except ImportError:
-    # Fallback to environment variables if config.py doesn't exist
+    # Respaldo a variables de entorno si config.py no existe
     VIRUSTOTAL_API_KEY = None
     MAX_FILE_SIZE_MB = 32
     SCAN_TIMEOUT_SECONDS = 300
     API_RATE_LIMIT_DELAY = 1
 
-# Configure logging
+# Configurar logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 class ProgressStreamer:
-    """Streams progress updates to stdout for real-time frontend updates"""
+    """Transmite actualizaciones de progreso a stdout para actualizaciones en tiempo real del frontend"""
     
     def __init__(self):
         self.progress_queue = queue.Queue()
