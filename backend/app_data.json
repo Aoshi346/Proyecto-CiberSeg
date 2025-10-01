@@ -1,79 +1,58 @@
 {
-  "lastScanDate": "2025-09-30T03:34:25.855Z",
+  "lastScanDate": "2025-10-01T03:08:12.770Z",
   "scanHistory": [
     {
-      "date": "2025-09-30T03:34:25.855Z",
-      "filesScanned": 10,
-      "threatsFound": 13,
-      "scanType": "unknown",
-      "duration": 1759203265854
-    },
-    {
-      "date": "2025-09-30T03:34:11.472Z",
+      "date": "2025-10-01T03:08:12.770Z",
       "filesScanned": 0,
       "threatsFound": 0,
       "scanType": "unknown",
-      "duration": 1759203251472
-    },
-    {
-      "date": "2025-09-30T03:33:54.965Z",
-      "filesScanned": 0,
-      "threatsFound": 0,
-      "scanType": "unknown",
-      "duration": 1759203234965
-    },
-    {
-      "date": "2025-09-30T03:33:44.148Z",
-      "filesScanned": 1,
-      "threatsFound": 0,
-      "scanType": "unknown",
-      "duration": 1759203224148
+      "duration": 0
     }
   ],
-  "totalScans": 4,
-  "totalFilesScanned": 11,
-  "totalThreatsFound": 13,
+  "totalScans": 1,
+  "totalFilesScanned": 0,
+  "totalThreatsFound": 0,
   "lastAnalysis": {
-    "fileName": "Formato Complementario 2025v_KALANY SANZ.docx",
-    "timestamp": 1759188918951,
-    "filePath": "C:\\Users\\aoshi\\OneDrive\\Desktop\\Formato Complementario 2025v_KALANY SANZ.docx",
+    "fileName": "forensics_results_2025-10-01.txt",
+    "timestamp": 1759288092757,
+    "filePath": "C:\\Users\\aoshi\\Downloads\\forensics_results_2025-10-01.txt",
     "analysisResult": {
       "success": true,
-      "filePath": "C:\\Users\\aoshi\\OneDrive\\Desktop\\Formato Complementario 2025v_KALANY SANZ.docx",
+      "filePath": "C:\\Users\\aoshi\\Downloads\\forensics_results_2025-10-01.txt",
       "analysisType": "full",
       "analysis": {
         "basic": {
-          "name": "Formato Complementario 2025v_KALANY SANZ.docx",
-          "extension": ".docx",
-          "size": 88820,
-          "sizeFormatted": "86.74 KB",
-          "type": "document",
-          "created": "2025-08-11T14:20:14.997Z",
-          "modified": "2025-08-11T15:17:01.000Z",
-          "accessed": "2025-09-29T23:35:17.336Z",
+          "name": "forensics_results_2025-10-01.txt",
+          "extension": ".txt",
+          "size": 13949,
+          "sizeFormatted": "13.62 KB",
+          "type": "text",
+          "created": "2025-10-01T02:24:09.602Z",
+          "modified": "2025-10-01T02:24:10.495Z",
+          "accessed": "2025-10-01T02:24:10.944Z",
           "permissions": "100666",
           "isHidden": false,
           "isExecutable": false
         },
         "hash": {
-          "md5": "ab43c0d94009d5a08b72b0fe27e1aad5",
-          "sha1": "6da2dbfeafc904816be92ae20013dc28b495170c",
-          "sha256": "434590f01c6d517088fb35ca23c6ccaf0281fbbaffbe7e1564c2f71cd061949f",
-          "sha512": "1b3e924836e00c885ef10c1b11eadfbfc98066ca1ac3869a03a3aa95b81301d57d6f2e58d503c147f61c6723e543a73407dee9f8de0366b8b0f2d600bb92a395"
+          "md5": "8f47f21aef1407acc15927aef79db799",
+          "sha1": "93764f89f3c7cc8c3b2def7b0c148a64f7cfece1",
+          "sha256": "d384769e485594dcb9ad896203b7e2a742318c7c62903eff8f7a65692ccc9f38",
+          "sha512": "d902359c38614f1a4ecf185ce777232fa2c79ddeb7b7dedf4fd22ab005a701b15e05f8266fabd13ba9880b206fd0c5e2d9073874db734420d67a0d6f17f79ba7"
         },
         "metadata": {
           "basic": {
-            "name": "Formato Complementario 2025v_KALANY SANZ.docx",
-            "directory": "C:\\Users\\aoshi\\OneDrive\\Desktop",
-            "extension": ".docx",
-            "size": 88820,
-            "created": "2025-08-11T14:20:14.997Z",
-            "modified": "2025-08-11T15:17:01.000Z",
-            "accessed": "2025-09-29T23:35:17.336Z"
+            "name": "forensics_results_2025-10-01.txt",
+            "directory": "C:\\Users\\aoshi\\Downloads",
+            "extension": ".txt",
+            "size": 13949,
+            "created": "2025-10-01T02:24:09.602Z",
+            "modified": "2025-10-01T02:24:10.495Z",
+            "accessed": "2025-10-01T02:24:10.944Z"
           },
           "extended": {
             "document": {
-              "format": ".docx",
+              "format": ".txt",
               "hasMetadata": false,
               "pages": 0,
               "author": "unknown"
@@ -81,12 +60,12 @@
           }
         },
         "content": {
-          "type": "document",
+          "type": "text",
           "encoding": "utf8",
           "language": "unknown",
-          "lines": 607,
-          "words": 1511,
-          "characters": 85559,
+          "lines": 544,
+          "words": 1083,
+          "characters": 13621,
           "suspiciousPatterns": []
         },
         "security": {
@@ -104,7 +83,7 @@
           ]
         }
       },
-      "timestamp": "2025-09-29T23:35:18.946Z",
+      "timestamp": "2025-10-01T03:08:12.743Z",
       "duration": 0
     }
   }

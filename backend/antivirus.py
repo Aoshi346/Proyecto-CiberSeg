@@ -213,14 +213,14 @@ class VirusTotalAntivirus:
                     return {
                         'success': True,
                         'file_hash': file_hash,
-                        'message': 'File not found in VirusTotal database',
+                        'message': 'Archivo no encontrado en la base de datos de VirusTotal',
                         'threats': [],
                         'scan_date': None
                     }
             else:
                 return {
                     'success': False,
-                    'message': f'VirusTotal API error: {response.status_code}',
+                    'message': f'API Error: {response.status_code}',
                     'threats': [],
                     'scan_date': None
                 }
@@ -264,7 +264,7 @@ class VirusTotalAntivirus:
             if not os.path.exists(file_path):
                 return {
                     'success': False,
-                    'message': 'File not found',
+                    'message': 'Archivo no encontrado',
                     'threats': [],
                     'scan_date': None
                 }
@@ -437,20 +437,40 @@ class VirusTotalAntivirus:
             suspicious_names = ['virus', 'malware', 'trojan', 'backdoor', 'rootkit', 'keylogger', 'suspicious', 'testfile']
             if any(name in file_name for name in suspicious_names):
                 threats.append({
-                    'name': 'Suspicious filename',
+                    'name': 'Nombre de archivo sospechoso',
                     'severity': 'high',
-                    'engine': 'Heuristic Analysis',
-                    'description': f'File name contains suspicious keywords: {file_name}'
+                    'engine': 'Análisis Heurístico',
+                    'description': f'El nombre del archivo contiene palabras clave sospechosas: {file_name}'
                 })
             
-            # Check suspicious extensions
-            suspicious_extensions = ['.bat', '.cmd', '.ps1', '.vbs', '.js', '.exe', '.com', '.scr', '.zip']
-            if file_ext in suspicious_extensions:
+            # Check suspicious extensions (but exclude common legitimate executables)
+            suspicious_extensions = ['.bat', '.cmd', '.ps1', '.vbs', '.js', '.com', '.scr']
+            # Only flag .exe files if they have suspicious names or are in suspicious locations
+            if file_ext == '.exe':
+                # Check for suspicious executable names or locations
+                suspicious_exe_names = ['virus', 'malware', 'trojan', 'backdoor', 'rootkit', 'keylogger', 'suspicious', 'testfile', 'hack', 'crack', 'keygen']
+                suspicious_exe_locations = ['temp', 'tmp', 'downloads', 'desktop']
+                
+                if any(name in file_name for name in suspicious_exe_names):
+                    threats.append({
+                        'name': 'Ejecutable sospechoso',
+                        'severity': 'high',
+                        'engine': 'Análisis Heurístico',
+                        'description': f'Ejecutable con nombre sospechoso: {file_name}'
+                    })
+                elif any(location in normalized_path.lower() for location in suspicious_exe_locations):
+                    threats.append({
+                        'name': 'Ejecutable en ubicación sospechosa',
+                        'severity': 'medium',
+                        'engine': 'Análisis Heurístico',
+                        'description': f'Ejecutable encontrado en ubicación sospechosa: {normalized_path}'
+                    })
+            elif file_ext in suspicious_extensions:
                 threats.append({
-                    'name': 'Suspicious file type',
+                    'name': 'Tipo de archivo sospechoso',
                     'severity': 'medium',
-                    'engine': 'Heuristic Analysis',
-                    'description': f'File has potentially dangerous extension: {file_ext}'
+                    'engine': 'Análisis Heurístico',
+                    'description': f'El archivo tiene una extensión potencialmente peligrosa: {file_ext}'
                 })
             
             # Check file content for suspicious patterns
@@ -475,19 +495,19 @@ class VirusTotalAntivirus:
                 for pattern, description in suspicious_patterns:
                     if pattern in content:
                         threats.append({
-                            'name': f'Suspicious pattern: {pattern}',
+                            'name': f'Patrón sospechoso: {pattern}',
                             'severity': 'medium',
-                            'engine': 'Heuristic Analysis',
+                            'engine': 'Análisis Heurístico',
                             'description': description
                         })
                 
                 # Check for obfuscated code patterns
                 if any(char in content for char in ['%random%', '%temp%', 'base64', 'encoded']):
                     threats.append({
-                        'name': 'Obfuscated code patterns',
+                        'name': 'Patrones de código ofuscado',
                         'severity': 'high',
-                        'engine': 'Heuristic Analysis',
-                        'description': 'File contains obfuscation techniques'
+                        'engine': 'Análisis Heurístico',
+                        'description': 'El archivo contiene técnicas de ofuscación'
                     })
                 
             except Exception:
@@ -499,10 +519,10 @@ class VirusTotalAntivirus:
                 file_size = os.path.getsize(normalized_path)
                 if file_size < 1000:  # Very small executable
                     threats.append({
-                        'name': 'Suspicious small executable',
+                        'name': 'Ejecutable sospechosamente pequeño',
                         'severity': 'high',
-                        'engine': 'Heuristic Analysis',
-                        'description': f'Executable file is unusually small ({file_size} bytes)'
+                        'engine': 'Análisis Heurístico',
+                        'description': f'El archivo ejecutable es inusualmente pequeño ({file_size} bytes)'
                     })
             
             if threats:
@@ -510,7 +530,7 @@ class VirusTotalAntivirus:
                     'success': True,
                     'file_path': normalized_path,
                     'file_hash': self.get_file_hash(normalized_path, 'sha256'),
-                    'message': f'Suspicious patterns detected: {len(threats)} threats',
+                    'message': f'Patrones sospechosos detectados: {len(threats)} amenazas',
                     'threats': threats,
                     'scan_date': time.time()
                 }
@@ -613,27 +633,17 @@ class VirusTotalAntivirus:
                 
                 return eicar_result
             
-            # Check for suspicious patterns
+            # Check for suspicious patterns (but don't return immediately - let VirusTotal have priority)
             suspicious_result = self._check_suspicious_patterns(file_path)
-            if suspicious_result:
-                self.stats['files_scanned'] += 1
-                self.stats['threats_found'] += len(suspicious_result['threats'])
-                self.stats['last_scan_time'] = time.time()
-                
-                self._send_progress(f"Suspicious patterns detected: {len(suspicious_result['threats'])} threats", 'warning', {
-                    'threats': suspicious_result['threats']
-                })
-                
-                return suspicious_result
             
             # Calculate file hash
             self._send_progress("Calculating file hash...", 'info')
             file_hash = self.get_file_hash(file_path, 'sha256')
             if not file_hash:
-                self._send_progress("Failed to calculate file hash", 'error')
+                self._send_progress("Error al calcular el hash del archivo", 'error')
                 return {
                     'success': False,
-                    'message': 'Could not calculate file hash',
+                    'message': 'No se pudo calcular el hash del archivo',
                     'file_path': file_path,
                     'threats': [],
                     'scan_date': None
@@ -661,18 +671,40 @@ class VirusTotalAntivirus:
                 return result
             
             elif result['success'] and not result.get('threats'):
-                # File scanned but no threats found
-                self.stats['files_scanned'] += 1
-                self.stats['last_scan_time'] = time.time()
-                
-                self._send_progress("File is clean", 'success')
-                
-                result['file_path'] = file_path
-                result['file_hash'] = file_hash
-                result['scan_method'] = 'hash'
-                
-                self.scan_history.append(result)
-                return result
+                # File scanned but no threats found by VirusTotal
+                # Check if heuristic detection found anything
+                if suspicious_result and suspicious_result.get('threats'):
+                    # VirusTotal says clean, but heuristic found suspicious patterns
+                    # Use heuristic results but mark as low confidence
+                    self.stats['files_scanned'] += 1
+                    self.stats['threats_found'] += len(suspicious_result['threats'])
+                    self.stats['last_scan_time'] = time.time()
+                    
+                    self._send_progress(f"Patrones sospechosos detectados (VirusTotal limpio): {len(suspicious_result['threats'])} amenazas", 'warning', {
+                        'threats': suspicious_result['threats'],
+                        'confidence': 'low'
+                    })
+                    
+                    suspicious_result['file_path'] = file_path
+                    suspicious_result['file_hash'] = file_hash
+                    suspicious_result['scan_method'] = 'heuristic'
+                    suspicious_result['virustotal_result'] = 'clean'
+                    
+                    self.scan_history.append(suspicious_result)
+                    return suspicious_result
+                else:
+                    # Both VirusTotal and heuristic say clean
+                    self.stats['files_scanned'] += 1
+                    self.stats['last_scan_time'] = time.time()
+                    
+                    self._send_progress("File is clean", 'success')
+                    
+                    result['file_path'] = file_path
+                    result['file_hash'] = file_hash
+                    result['scan_method'] = 'hash'
+                    
+                    self.scan_history.append(result)
+                    return result
             
             else:
                 # File not in database, try uploading
@@ -696,8 +728,35 @@ class VirusTotalAntivirus:
                     result['scan_method'] = 'upload'
                     
                     self.scan_history.append(result)
-                
-                return result
+                    return result
+                else:
+                    # Upload failed, fall back to heuristic detection
+                    if suspicious_result and suspicious_result.get('threats'):
+                        self.stats['files_scanned'] += 1
+                        self.stats['threats_found'] += len(suspicious_result['threats'])
+                        self.stats['last_scan_time'] = time.time()
+                        
+                        self._send_progress(f"VirusTotal falló, usando detección heurística: {len(suspicious_result['threats'])} amenazas", 'warning', {
+                            'threats': suspicious_result['threats'],
+                            'confidence': 'medium'
+                        })
+                        
+                        suspicious_result['file_path'] = file_path
+                        suspicious_result['file_hash'] = file_hash
+                        suspicious_result['scan_method'] = 'heuristic_fallback'
+                        suspicious_result['virustotal_error'] = result.get('message', 'Upload failed')
+                        
+                        self.scan_history.append(suspicious_result)
+                        return suspicious_result
+                    else:
+                        # Both VirusTotal and heuristic failed
+                        return {
+                            'success': False,
+                            'message': f'VirusTotal upload failed: {result.get("message", "Unknown error")}',
+                            'file_path': file_path,
+                            'threats': [],
+                            'scan_date': None
+                        }
                 
         except Exception as e:
             logger.error(f"Error scanning file {file_path}: {e}")
@@ -889,7 +948,7 @@ class VirusTotalAntivirus:
                     total_files_scanned += result['files_scanned']
                     total_threats_found += result['threats_found']
                 else:
-                    self._send_progress(f"Failed to scan folder: {folder_path}", 'error')
+                    self._send_progress(f"Error al escanear carpeta: {folder_path}", 'error')
             
             total_time = time.time() - start_time
             self._send_progress(f"All folders scanned: {total_files_scanned} files, {total_threats_found} threats", 'success', {

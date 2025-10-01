@@ -66,7 +66,7 @@ try {
   const tempBase = path.join(os.tmpdir(), 'ciberseg');
   app.setPath('userData', tempBase);
 } catch (e) {
-  console.warn('Failed setting userData path', e);
+  console.warn('Error al establecer la ruta de userData', e);
 }
 
 // Reducir problemas de caché
@@ -226,7 +226,7 @@ async function runPythonScript(scriptPath, args = [], enableProgressStreaming = 
     });
 
     pythonProcess.on('error', (error) => {
-      reject(new Error(`Failed to start Python script: ${error.message}`));
+      reject(new Error(`Error al iniciar el script de Python: ${error.message}`));
     });
   });
 }
@@ -603,7 +603,7 @@ function setupIPC() {
   ipcMain.handle('stop-antivirus-scan', async () => {
     try {
       if (antivirusProcess && antivirusStatus.isRunning) {
-        console.log('Stopping antivirus scan...');
+      console.log('Deteniendo escaneo antivirus...');
         
         // Kill the Python process
         antivirusProcess.kill('SIGTERM');
@@ -1289,7 +1289,7 @@ async function generateAntivirusTestFiles() {
   // 2. Files with Known Malware-like Patterns
   const malwarePatterns = [
     'MZ\x90\x00\x03\x00\x00\x00\x04\x00\x00\x00\xff\xff\x00\x00\xb8\x00\x00\x00\x00\x00\x00\x00\x40\x00\x00\x00\x00\x00\x00\x00',
-    'This file contains patterns that mimic known malware signatures but is completely safe for testing purposes.',
+    'Este archivo contiene patrones que imitan firmas de malware conocidas pero es completamente seguro para propósitos de prueba.',
     'PE\x00\x00\x4c\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
   ];
   
@@ -1316,7 +1316,7 @@ async function generateAntivirusTestFiles() {
   });
   
   // 3. Test File with Known Malware Hash Pattern
-  const malwarePatternContent = 'This file contains patterns similar to known malware but is completely safe.';
+  const malwarePatternContent = 'Este archivo contiene patrones similares a malware conocido pero es completamente seguro.';
   const malwarePatternPath = path.join(testDir, 'malware_pattern_test.txt');
   fs.writeFileSync(malwarePatternPath, malwarePatternContent, 'utf8');
   testFiles.push({
@@ -1328,7 +1328,7 @@ async function generateAntivirusTestFiles() {
   });
   
   // 4. Archive with Suspicious Content
-  const archiveContent = 'This is a test archive file for antivirus testing.';
+  const archiveContent = 'Este es un archivo de prueba de archivo para pruebas de antivirus.';
   const archivePath = path.join(testDir, 'test_archive.zip');
   fs.writeFileSync(archivePath, archiveContent, 'utf8');
   testFiles.push({
@@ -1620,7 +1620,7 @@ async function testEicarDetection() {
         });
       });
     } catch (error) {
-      console.log('VirusTotal test failed:', error.message);
+      console.log('Prueba de VirusTotal falló:', error.message);
     }
     
     // Clean up test file
@@ -2040,7 +2040,7 @@ async function deleteThreats() {
             console.log(`Folder not empty, keeping: ${location} (${remainingFiles.length} files remaining)`);
           }
         } catch (error) {
-          console.log(`Could not delete folder ${location}: ${error.message}`);
+          console.log(`No se pudo eliminar la carpeta ${location}: ${error.message}`);
           // Don't add to errors as this is not critical
         }
       }
@@ -2155,7 +2155,7 @@ async function generateRealMalwareTests() {
       // These are known malware signature patterns (safe for testing)
       'MZ\x90\x00\x03\x00\x00\x00\x04\x00\x00\x00\xff\xff\x00\x00\xb8\x00\x00\x00\x00\x00\x00\x00\x40\x00\x00\x00\x00\x00\x00\x00',
       'PE\x00\x00\x4c\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-      'This file contains patterns that mimic known malware signatures but is completely safe for testing purposes.'
+      'Este archivo contiene patrones que imitan firmas de malware conocidas pero es completamente seguro para propósitos de prueba.'
     ];
     
     // Create files with suspicious binary patterns

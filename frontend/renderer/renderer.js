@@ -3,16 +3,20 @@ class CiberSegApp {
   constructor() {
     this.currentSection = 'dashboard';
     this.termsAccepted = this.checkTermsAcceptance();
+    this.threatCount = 0; // Track total threats detected
+    this.activityLog = []; // Track real activity
+    this.urlScanHistory = []; // Track URL scan history
     this.init();
   }
 
-  init() {
+  async init() {
     this.setupEventListeners();
     this.setupAnimations();
-    this.loadDashboardData();
     this.initializeKeylogger();
     this.initializeAntivirusStats();
-    this.loadAppData();
+    await this.loadAppData();
+    await this.loadActivityData();
+    await this.loadDashboardData();
     this.setupDashboardRefresh();
     
     // Siempre mostrar modal de términos para propósitos de prueba
@@ -203,8 +207,8 @@ class CiberSegApp {
 
     // Antivirus progress updates
     if (window.electronAPI && window.electronAPI.onAntivirusProgress) {
-      window.electronAPI.onAntivirusProgress((event, progressData) => {
-        this.handleAntivirusProgress(progressData);
+      window.electronAPI.onAntivirusProgress(async (event, progressData) => {
+        await this.handleAntivirusProgress(progressData);
       });
     }
   }
@@ -259,12 +263,14 @@ class CiberSegApp {
       case 'generate-password':
         this.generateNewPassword();
         break;
-      case 'start-simulation':
-        this.startSimulation();
+      case 'scan-url':
+        this.scanUrl();
         break;
-      case 'config-simulation':
-        this.navigateToSection('simulation');
-        this.showNotification('Configuración de simulación abierta', 'info');
+      case 'clear-url':
+        this.clearUrlInput();
+        break;
+      case 'scan-history':
+        this.showUrlScanHistory();
         break;
       case 'run-analysis':
         this.openForensicAnalysis();
@@ -418,7 +424,7 @@ class CiberSegApp {
     const titles = {
       dashboard: 'Dashboard',
       passwords: 'Gestión de Contraseñas',
-      simulation: 'Simulación de Entorno',
+      urlscanner: 'URL Scanner',
       forensics: 'Herramientas Forenses',
       settings: 'Configuración'
     };
@@ -426,7 +432,7 @@ class CiberSegApp {
     const subtitles = {
       dashboard: 'Centro de herramientas de ciberseguridad',
       passwords: 'Administra y genera contraseñas seguras',
-      simulation: 'Crea y ejecuta entornos virtuales controlados',
+      urlscanner: 'Escanea URLs en busca de amenazas',
       forensics: 'Herramientas de análisis forense digital',
       settings: 'Configuración del sistema y preferencias'
     };
@@ -472,8 +478,9 @@ class CiberSegApp {
           this.navigateToSection('passwords');
           this.showNotification('Gestión de Contraseñas iniciada', 'success');
           break;
-        case 'simulation':
-          this.startSimulation();
+        case 'urlscanner':
+          this.navigateToSection('urlscanner');
+          this.showNotification('URL Scanner iniciado', 'success');
           break;
         case 'forensics':
           this.navigateToSection('forensics');
@@ -775,19 +782,19 @@ class CiberSegApp {
     });
   }
 
-  loadDashboardData() {
+  async loadDashboardData() {
     // Load all dashboard data
-    this.loadVaultCount();
-    this.loadRecentPasswords();
-    this.loadPasswordList();
-    this.loadKeyloggerStatus();
-    this.loadAntivirusStatus();
-    this.loadForensicsStatus();
-    this.loadSystemStatus();
-    this.updateDashboardStatistics();
+    await this.loadVaultCount();
+    await this.loadRecentPasswords();
+    await this.loadPasswordList();
+    await this.loadKeyloggerStatus();
+    await this.loadAntivirusStatus();
+    await this.loadForensicsStatus();
+    await this.loadSystemStatus();
+    await this.updateDashboardStatistics();
     this.updateLastActivity();
     // Ensure vault dashboard data is loaded
-    this.loadVaultDashboardData();
+    await this.loadVaultDashboardData();
   }
 
   async updateDashboardStatistics() {
@@ -795,10 +802,11 @@ class CiberSegApp {
       // Calculate security score based on various factors
       let securityScore = 0;
       let activeModules = 0;
+      let lastActivityTime = null;
 
       // Check vault status
       const vaultStats = await window.electronAPI.getVaultStats();
-      if (vaultStats.success) {
+      if (vaultStats.success && vaultStats.totalPasswords > 0) {
         securityScore += 20; // Base score for having vault
         activeModules++;
         
@@ -806,6 +814,11 @@ class CiberSegApp {
         if (vaultStats.averageStrength > 70) securityScore += 15;
         else if (vaultStats.averageStrength > 50) securityScore += 10;
         else if (vaultStats.averageStrength > 30) securityScore += 5;
+        
+        // Track vault activity
+        if (vaultStats.lastActivity) {
+          lastActivityTime = new Date(vaultStats.lastActivity);
+        }
       }
 
       // Check keylogger status
@@ -813,22 +826,76 @@ class CiberSegApp {
       if (keyloggerStatus.isRunning) {
         securityScore += 10; // Monitoring active
         activeModules++;
+        
+        // Track keylogger activity
+        if (keyloggerStatus.lastActivity) {
+          const keyloggerTime = new Date(keyloggerStatus.lastActivity);
+          if (!lastActivityTime || keyloggerTime > lastActivityTime) {
+            lastActivityTime = keyloggerTime;
+          }
+        }
       }
 
-      // Check antivirus status (assume active if no errors)
-      securityScore += 15; // Base antivirus score
-      activeModules++;
+      // Check antivirus status and recent scans
+      if (this.appData && this.appData.lastScanDate) {
+        securityScore += 15; // Base antivirus score
+        activeModules++;
+        
+        // Add points for recent scans
+        const scanTime = new Date(this.appData.lastScanDate);
+        const hoursSinceScan = (Date.now() - scanTime.getTime()) / (1000 * 60 * 60);
+        
+        if (hoursSinceScan < 24) securityScore += 10; // Recent scan
+        else if (hoursSinceScan < 168) securityScore += 5; // Within a week
+        
+        // Track antivirus activity
+        if (!lastActivityTime || scanTime > lastActivityTime) {
+          lastActivityTime = scanTime;
+        }
+      }
 
       // Check forensics capability
-      securityScore += 10; // Forensics available
-      activeModules++;
+      if (this.appData && this.appData.lastAnalysis) {
+        securityScore += 10; // Forensics available
+        activeModules++;
+        
+        // Track forensics activity
+        const analysisTime = new Date(this.appData.lastAnalysis.timestamp);
+        if (!lastActivityTime || analysisTime > lastActivityTime) {
+          lastActivityTime = analysisTime;
+        }
+      }
 
       // Update UI
       const scoreElement = document.getElementById('dashboard-security-score');
       const modulesElement = document.getElementById('dashboard-active-modules');
       
-      if (scoreElement) scoreElement.textContent = Math.min(100, securityScore);
-      if (modulesElement) modulesElement.textContent = activeModules;
+      if (scoreElement) {
+        scoreElement.textContent = Math.min(100, securityScore);
+        // Add color coding based on score
+        if (securityScore >= 80) {
+          scoreElement.className = 'text-2xl font-semibold text-green-700';
+        } else if (securityScore >= 60) {
+          scoreElement.className = 'text-2xl font-semibold text-yellow-600';
+        } else {
+          scoreElement.className = 'text-2xl font-semibold text-red-600';
+        }
+      }
+      
+      if (modulesElement) {
+        modulesElement.textContent = activeModules;
+        // Add color coding based on active modules
+        if (activeModules >= 4) {
+          modulesElement.className = 'text-2xl font-semibold text-blue-700';
+        } else if (activeModules >= 2) {
+          modulesElement.className = 'text-2xl font-semibold text-yellow-600';
+        } else {
+          modulesElement.className = 'text-2xl font-semibold text-red-600';
+        }
+      }
+
+      // Update last activity
+      this.updateLastActivity(lastActivityTime);
 
     } catch (error) {
       console.error('Error updating dashboard statistics:', error);
@@ -877,10 +944,18 @@ class CiberSegApp {
     }
 
     if (sessionTime) {
-      const hours = Math.floor(status.sessionTime / 3600);
-      const minutes = Math.floor((status.sessionTime % 3600) / 60);
-      const seconds = status.sessionTime % 60;
-      sessionTime.textContent = `Sesión: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      // Handle undefined/null sessionTime
+      const sessionTimeValue = status.sessionTime || 0;
+      
+      // If keylogger is not running, show 00:00:00
+      if (!status.isRunning) {
+        sessionTime.textContent = 'Sesión: 00:00:00';
+      } else {
+        const hours = Math.floor(sessionTimeValue / 3600);
+        const minutes = Math.floor((sessionTimeValue % 3600) / 60);
+        const seconds = Math.floor(sessionTimeValue % 60);
+        sessionTime.textContent = `Sesión: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      }
     }
 
     if (keysCount) keysCount.textContent = status.stats.totalKeys;
@@ -889,18 +964,27 @@ class CiberSegApp {
 
   async loadAntivirusStatus() {
     try {
-      // Get antivirus status from backend
+      // First try to get antivirus status from backend
       const status = await window.electronAPI.getAntivirusStatus();
+      
+      // If we have app data with scan information, use it to enhance the status
+      if (this.appData && this.appData.lastScanDate) {
+        status.lastScan = this.appData.lastScanDate;
+        status.threatsFound = this.appData.totalThreatsFound || 0;
+        status.filesScanned = this.appData.totalFilesScanned || 0;
+      }
+      
       this.updateAntivirusDashboardStatus(status);
     } catch (error) {
       console.error('Error loading antivirus status:', error);
-      // Set default status
-      this.updateAntivirusDashboardStatus({
+      // Set default status but try to use app data if available
+      const defaultStatus = {
         isActive: true,
-        lastScan: null,
-        threatsFound: 0,
-        filesScanned: 0
-      });
+        lastScan: this.appData?.lastScanDate || null,
+        threatsFound: this.appData?.totalThreatsFound || 0,
+        filesScanned: this.appData?.totalFilesScanned || 0
+      };
+      this.updateAntivirusDashboardStatus(defaultStatus);
     }
   }
 
@@ -1124,11 +1208,135 @@ class CiberSegApp {
     if (strengthAvg) strengthAvg.textContent = `${Math.round(averageStrength)}%`;
   }
 
-  updateLastActivity() {
+  addActivityLogEntry(type, title, description, status = 'info') {
+    const activity = {
+      id: Date.now(),
+      type: type,
+      title: title,
+      description: description,
+      status: status,
+      timestamp: new Date(),
+      timeString: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+    };
+    
+    // Add to beginning of array (most recent first)
+    this.activityLog.unshift(activity);
+    
+    // Keep only last 10 activities
+    if (this.activityLog.length > 10) {
+      this.activityLog = this.activityLog.slice(0, 10);
+    }
+    
+    // Update activity display
+    this.updateActivityDisplay();
+    
+    // Save to app data
+    this.saveActivityData();
+  }
+
+  updateActivityDisplay() {
+    const activityContainer = document.querySelector('.relative.max-h-64.overflow-y-auto.pl-5');
+    if (!activityContainer) return;
+    
+    // Clear existing activities
+    activityContainer.innerHTML = '<div class="absolute left-2 top-0 bottom-0 w-px bg-gray-200"></div>';
+    
+    // Add only first 4 real activities
+    this.activityLog.slice(0, 4).forEach(activity => {
+      const statusColors = {
+        'success': 'bg-green-500',
+        'info': 'bg-blue-500',
+        'warning': 'bg-yellow-500',
+        'error': 'bg-red-500'
+      };
+      
+      const activityElement = document.createElement('div');
+      activityElement.className = 'flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer';
+      activityElement.innerHTML = `
+        <div class="w-2 h-2 rounded-full ${statusColors[activity.status]} mt-2"></div>
+        <div class="flex-1">
+          <div class="flex justify-between items-start">
+            <span class="text-sm font-medium text-gray-800">${activity.title}</span>
+            <span class="text-xs text-gray-500">${activity.timeString}</span>
+          </div>
+          <p class="text-xs text-gray-600">${activity.description}</p>
+        </div>
+      `;
+      
+      activityContainer.appendChild(activityElement);
+    });
+    
+    // If no activities, show placeholder
+    if (this.activityLog.length === 0) {
+      const placeholder = document.createElement('div');
+      placeholder.className = 'flex items-center justify-center py-8 text-gray-500';
+      placeholder.innerHTML = '<span class="text-sm">No hay actividad reciente</span>';
+      activityContainer.appendChild(placeholder);
+    }
+  }
+
+  async saveActivityData() {
+    try {
+      await window.electronAPI.updateScanData({ 
+        activityLog: this.activityLog.map(activity => ({
+          ...activity,
+          timestamp: activity.timestamp.toISOString()
+        }))
+      });
+    } catch (error) {
+      console.error('Error saving activity data:', error);
+    }
+  }
+
+  async loadActivityData() {
+    try {
+      const result = await window.electronAPI.getAppData();
+      if (result.success && result.data && result.data.activityLog) {
+        this.activityLog = result.data.activityLog.map(activity => ({
+          ...activity,
+          timestamp: new Date(activity.timestamp)
+        }));
+        this.updateActivityDisplay();
+      }
+    } catch (error) {
+      console.error('Error loading activity data:', error);
+    }
+  }
+
+  updateLastActivity(lastActivityTime = null) {
     const lastActivityElement = document.getElementById('dashboard-last-activity');
     if (lastActivityElement) {
+      let activityTime = lastActivityTime;
+      
+      // If no specific time provided, use current time
+      if (!activityTime) {
+        activityTime = new Date();
+      }
+      
       const now = new Date();
-      lastActivityElement.textContent = `Hoy ${now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`;
+      const diffMs = now - activityTime;
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      
+      let timeText;
+      if (diffHours < 1) {
+        const diffMinutes = Math.floor(diffMs / (1000 * 60));
+        timeText = `Hace ${diffMinutes} min`;
+      } else if (diffHours < 24) {
+        timeText = `Hace ${diffHours}h`;
+      } else if (diffDays === 1) {
+        timeText = 'Ayer';
+      } else if (diffDays < 7) {
+        timeText = `Hace ${diffDays} días`;
+      } else {
+        timeText = activityTime.toLocaleDateString('es-ES', { 
+          day: 'numeric', 
+          month: 'short' 
+        });
+      }
+      
+      lastActivityElement.textContent = timeText;
+      lastActivityElement.title = `Última actividad: ${activityTime.toLocaleString('es-ES')}`;
     }
   }
 
@@ -1354,14 +1562,14 @@ class CiberSegApp {
       return;
     }
     
-    console.log('Showing confirmation dialog...');
+    console.log('Mostrando diálogo de confirmación...');
     const confirmed = confirm('¿Estás seguro de que quieres eliminar esta contraseña?');
     console.log('User confirmed deletion:', confirmed);
     
     if (confirmed) {
       this._deletingPassword = true;
       try {
-        console.log('Proceeding with password deletion...');
+        console.log('Procediendo con la eliminación de contraseña...');
         const result = await window.electronAPI.removePasswordFromVault(passwordId);
         if (result.success) {
           this.showNotification(result.message, 'success');
@@ -1605,7 +1813,7 @@ class CiberSegApp {
     setTimeout(() => {
       this.updatePasswordStrength(passwordInput.value);
       labelInput.focus();
-      console.log('Modal setup complete, password readonly:', passwordInput.readOnly);
+      console.log('Configuración del modal completa, contraseña readonly:', passwordInput.readOnly);
     }, 100);
   }
 
@@ -2072,11 +2280,15 @@ class CiberSegApp {
       
       if (result.success) {
         this.showNotification(result.message, 'success');
-    // Actualizar toda la información de bóveda
+        // Add activity log entry
+        this.addActivityLogEntry('vault', 'Contraseña generada', `Nueva contraseña para ${passwordData.label}`, 'success');
+        // Actualizar toda la información de bóveda
         await this.loadVaultCount();
         await this.loadPasswordList();
         // Update dashboard vault data
         await this.loadVaultDashboardData();
+        // Update dashboard statistics
+        await this.updateDashboardStatistics();
       } else {
         this.showNotification(result.message, 'error');
       }
@@ -2281,6 +2493,9 @@ class CiberSegApp {
         this.keyloggerStatus.startTime = new Date(result.startTime);
         this.updateKeyloggerStatus(true);
         
+        // Add activity log entry
+        this.addActivityLogEntry('keylogger', 'Monitoreo iniciado', 'Keylogger activado para captura de actividad', 'info');
+        
         // Update module buttons only (dashboard buttons are handled by updateKeyloggerDashboardStatus)
         const startBtn = document.getElementById('keylogger-start-btn');
         const stopBtn = document.getElementById('keylogger-stop-btn');
@@ -2315,6 +2530,9 @@ class CiberSegApp {
       if (result.success) {
         this.keyloggerStatus.isActive = false;
         this.updateKeyloggerStatus(false);
+        
+        // Add activity log entry
+        this.addActivityLogEntry('keylogger', 'Monitoreo detenido', 'Keylogger desactivado', 'info');
         
         // Update module buttons only (dashboard buttons are handled by updateKeyloggerDashboardStatus)
         const startBtn = document.getElementById('keylogger-start-btn');
@@ -2438,7 +2656,7 @@ class CiberSegApp {
   }
 
   startKeyloggerPolling() {
-    console.log('Starting keylogger polling...');
+    console.log('Iniciando polling del keylogger...');
     this.keyloggerStatus.pollingInterval = setInterval(async () => {
       try {
         const status = await window.electronAPI.getKeyloggerStatus();
@@ -2456,7 +2674,7 @@ class CiberSegApp {
         
         // Always update stats for real-time feedback, even if content hasn't changed
         if (status.logContent) {
-          console.log('Updating log content:', status.logContent.slice(-50));
+          console.log('Actualizando contenido del log:', status.logContent.slice(-50));
           this.parseKeyloggerContent(status.logContent);
         }
         
@@ -2509,12 +2727,12 @@ class CiberSegApp {
     // Update display immediately for real-time feedback
     this.updateKeyloggerStats();
     
-    console.log('Real-time content parsed:', { charCount, wordCount, content: content.slice(-50) });
+    console.log('Contenido en tiempo real parseado:', { charCount, wordCount, content: content.slice(-50) });
     
     // Actualizar pantalla de registro con formato de terminal original
     const logDisplay = document.getElementById('keylogger-log-display');
     if (logDisplay) {
-      console.log('Updating log display with content:', content.slice(-50));
+      console.log('Actualizando pantalla de log con contenido:', content.slice(-50));
       
       // Limpiar marcador de posición si existe
       if (logDisplay.querySelector('.text-center')) {
@@ -2558,26 +2776,26 @@ class CiberSegApp {
     const dashboardKeysCount = document.getElementById('keylogger-dashboard-keys-count');
     const dashboardWordsCount = document.getElementById('keylogger-dashboard-words-count');
     
-    console.log('Updating stats:', this.keyloggerStatus.stats); // Debug log
+    console.log('Actualizando estadísticas:', this.keyloggerStatus.stats); // Debug log
     
     // Actualizar sección principal
     if (keysCount) {
       keysCount.textContent = this.keyloggerStatus.stats.totalKeys;
-      console.log('Keys count updated to:', this.keyloggerStatus.stats.totalKeys);
+      console.log('Conteo de teclas actualizado a:', this.keyloggerStatus.stats.totalKeys);
     }
     if (wordsCount) {
       wordsCount.textContent = this.keyloggerStatus.stats.totalWords;
-      console.log('Words count updated to:', this.keyloggerStatus.stats.totalWords);
+      console.log('Conteo de palabras actualizado a:', this.keyloggerStatus.stats.totalWords);
     }
     
     // Actualizar dashboard
     if (dashboardKeysCount) {
       dashboardKeysCount.textContent = this.keyloggerStatus.stats.totalKeys;
-      console.log('Dashboard keys count updated to:', this.keyloggerStatus.stats.totalKeys);
+      console.log('Conteo de teclas del dashboard actualizado a:', this.keyloggerStatus.stats.totalKeys);
     }
     if (dashboardWordsCount) {
       dashboardWordsCount.textContent = this.keyloggerStatus.stats.totalWords;
-      console.log('Dashboard words count updated to:', this.keyloggerStatus.stats.totalWords);
+      console.log('Conteo de palabras del dashboard actualizado a:', this.keyloggerStatus.stats.totalWords);
     }
   }
 
@@ -2692,6 +2910,8 @@ class CiberSegApp {
   // ===== ANTIVIRUS FUNCTIONALITY =====
   
   async startAntivirusScan() {
+    // Reset threat count for new scan
+    this.threatCount = 0;
     // Open folder selector directly
     this.openFolderSelector();
   }
@@ -2723,19 +2943,47 @@ class CiberSegApp {
     const startBtn = document.querySelector('[data-action="start-antivirus-scan"]');
     const stopBtn = document.querySelector('[data-action="stop-antivirus-scan"]');
     
-    if (startBtn && stopBtn) {
+    // Update dashboard antivirus status indicator
+    const dashboardIndicator = document.getElementById('antivirus-dashboard-status-indicator');
+    const dashboardStatusText = document.getElementById('antivirus-dashboard-status-text');
+    
+    if (dashboardIndicator && dashboardStatusText) {
       if (isScanning) {
-        startBtn.disabled = true;
-        startBtn.classList.add('opacity-50', 'cursor-not-allowed');
-        stopBtn.disabled = false;
-        stopBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        dashboardIndicator.className = 'w-2 h-2 bg-orange-500 rounded-full animate-pulse';
+        dashboardStatusText.textContent = 'Escaneando';
+        dashboardStatusText.className = 'text-xs text-orange-600 font-semibold';
       } else {
-        startBtn.disabled = false;
-        startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-        stopBtn.disabled = true;
-        stopBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        dashboardIndicator.className = 'w-2 h-2 bg-green-500 rounded-full';
+        dashboardStatusText.textContent = 'Activo';
+        dashboardStatusText.className = 'text-xs text-green-600 font-semibold';
       }
     }
+    
+    // Update all start/stop buttons (both dashboard and forensics section)
+    const allStartBtns = document.querySelectorAll('[data-action="start-antivirus-scan"]');
+    const allStopBtns = document.querySelectorAll('[data-action="stop-antivirus-scan"]');
+    
+    allStartBtns.forEach(btn => {
+      if (isScanning) {
+        btn.disabled = true;
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+      } else {
+        btn.disabled = false;
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
+    });
+    
+    allStopBtns.forEach(btn => {
+      if (isScanning) {
+        btn.disabled = false;
+        btn.classList.remove('opacity-50', 'cursor-not-allowed', 'hidden');
+        btn.classList.add('block');
+      } else {
+        btn.disabled = true;
+        btn.classList.add('opacity-50', 'cursor-not-allowed', 'hidden');
+        btn.classList.remove('block');
+      }
+    });
   }
 
   clearProgressDisplay() {
@@ -2958,14 +3206,85 @@ class CiberSegApp {
   }
 
   async scanFile() {
-    // Simular selección de archivo
-    this.showNotification('Funcionalidad de escaneo de archivo en desarrollo', 'info');
-    this.addForensicsLogEntry('Antivirus', 'Escaneo de archivo solicitado', 'info');
+    try {
+      // Open file dialog to select file
+      const result = await window.electronAPI.showOpenDialog({
+        title: 'Seleccionar archivo para escanear',
+        properties: ['openFile'],
+        filters: [
+          { name: 'Todos los archivos', extensions: ['*'] },
+          { name: 'Ejecutables', extensions: ['exe', 'msi', 'bat', 'cmd'] },
+          { name: 'Documentos', extensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx'] },
+          { name: 'Archivos de sistema', extensions: ['dll', 'sys', 'drv'] }
+        ]
+      });
+
+      if (!result.canceled && result.filePaths.length > 0) {
+        const selectedFile = result.filePaths[0];
+        
+        this.showNotification('Escaneando archivo...', 'info');
+        this.addForensicsLogEntry('Antivirus', `🔍 Iniciando escaneo de archivo: ${selectedFile.split('\\').pop().split('/').pop()}`, 'info');
+        
+        // Call backend to scan the file
+        const scanResult = await window.electronAPI.scanFile(selectedFile);
+        
+        if (scanResult.success) {
+          if (scanResult.threats && scanResult.threats.length > 0) {
+            // Extract threat names from objects if they are objects
+            let threatNames;
+            if (Array.isArray(scanResult.threats)) {
+              threatNames = scanResult.threats.map(threat => {
+                if (typeof threat === 'string') {
+                  return threat;
+                } else if (threat && typeof threat === 'object') {
+                  return threat.name || threat.threat_name || threat.description || JSON.stringify(threat);
+                }
+                return String(threat);
+              }).join(', ');
+            } else {
+              threatNames = String(scanResult.threats);
+            }
+            
+            this.showNotification(`⚠️ ${scanResult.threats.length} amenaza(s) detectada(s)`, 'warning');
+            this.addForensicsLogEntry('Antivirus', `⚠️ ${scanResult.file_name || 'Archivo'} - VIRUS DETECTADO: ${threatNames}`, 'warning');
+            
+            // Add activity log entry
+            this.addActivityLogEntry('antivirus', 'Amenaza detectada', `${scanResult.threats.length} amenaza(s) en ${scanResult.file_name || 'archivo'}`, 'warning');
+            
+            // Update threat count and stats
+            this.threatCount += scanResult.threats.length;
+            this.updateAntivirusStats({
+              files_scanned: 1,
+              threats_found: this.threatCount,
+              total_files: 1
+            });
+          } else {
+            this.showNotification('✅ Archivo limpio - Sin amenazas detectadas', 'success');
+            this.addForensicsLogEntry('Antivirus', `✅ ${scanResult.file_name || 'Archivo'} - SIN VIRUS`, 'success');
+            
+            // Add activity log entry for clean scan
+            this.addActivityLogEntry('antivirus', 'Escaneo completado', `Archivo limpio: ${scanResult.file_name || 'archivo'}`, 'success');
+          }
+          
+          // Update dashboard stats
+          await this.loadAntivirusStatus();
+          // Update dashboard statistics
+          await this.updateDashboardStatistics();
+        } else {
+          this.addForensicsLogEntry('Antivirus', `Error: ${scanResult.message}`, 'error');
+          this.showNotification(scanResult.message, 'error');
+        }
+      }
+    } catch (error) {
+      this.addForensicsLogEntry('Antivirus', `Error seleccionando archivo: ${error.message}`, 'error');
+      this.showNotification('No se pudo abrir el selector de archivos. Verifique los permisos del sistema.', 'error');
+    }
   }
 
-  updateScanProgressDisplay() {
-    // This function is now handled by updateTerminalProgress()
-    // No separate floating progress card needed
+  openAntivirusSettings() {
+    // Navigate to forensics section where antivirus settings are available
+    this.navigateToSection('forensics');
+    this.showNotification('Configuración de antivirus disponible en la sección Forenses', 'info');
   }
 
   formatTime(seconds) {
@@ -3022,7 +3341,7 @@ class CiberSegApp {
     }
   }
 
-  handleAntivirusProgress(progressData) {
+  async handleAntivirusProgress(progressData) {
     // Handle scan stopped event
     if (progressData.type === 'scan_stopped') {
       this.updateAntivirusButtonStates(false);
@@ -3088,7 +3407,7 @@ class CiberSegApp {
           total_files: progressData.data.total_files
         });
       } else if (progressData.message.includes('Scanning file') && progressData.data.file_name) {
-        this.addForensicsLogEntry('Antivirus', `🔍 [${progressData.data.current_file}/${progressData.data.total_files}] Escaneando: ${progressData.data.file_name}`, 'info');
+        this.addForensicsLogEntry('Antivirus', `🔍 [${progressData.data.current_file || 0}/${progressData.data.total_files || 0}] Escaneando: ${progressData.data.file_name}`, 'info');
       } else if (progressData.message.includes('Calculating file hash')) {
         this.addForensicsLogEntry('Antivirus', `📊 Calculando hash SHA-256 de ${progressData.data.file_name || 'archivo'}...`, 'info');
       } else if (progressData.message.includes('Checking VirusTotal database')) {
@@ -3123,6 +3442,11 @@ class CiberSegApp {
         // Reset button states when all scans complete
         this.updateAntivirusButtonStates(false);
         this.clearProgressDisplay();
+        // Update dashboard statistics
+        await this.updateDashboardStatistics();
+        
+        // Add activity log entry
+        this.addActivityLogEntry('antivirus', 'Escaneo completo', `${progressData.data.total_files_scanned} archivos escaneados, ${progressData.data.total_threats_found} amenazas`, 'success');
         
         // Save scan data
         this.saveScanData({
@@ -3134,7 +3458,30 @@ class CiberSegApp {
       }
     } else if (progressData.type === 'warning') {
       if (progressData.data.threats) {
-        this.addForensicsLogEntry('Antivirus', `⚠️ ${progressData.data.file_name || 'Archivo'} - VIRUS DETECTADO: ${progressData.data.threats.join(', ')}`, 'warning');
+        // Extract threat names from objects if they are objects
+        let threatNames;
+        if (Array.isArray(progressData.data.threats)) {
+          threatNames = progressData.data.threats.map(threat => {
+            if (typeof threat === 'string') {
+              return threat;
+            } else if (threat && typeof threat === 'object') {
+              return threat.name || threat.threat_name || threat.description || JSON.stringify(threat);
+            }
+            return String(threat);
+          }).join(', ');
+        } else {
+          threatNames = String(progressData.data.threats);
+        }
+        
+        this.addForensicsLogEntry('Antivirus', `⚠️ ${progressData.data.file_name || 'Archivo'} - VIRUS DETECTADO: ${threatNames}`, 'warning');
+        
+        // Update threat count and stats
+        this.threatCount += progressData.data.threats.length;
+        this.updateAntivirusStats({
+          files_scanned: progressData.data.current_file || 0,
+          threats_found: this.threatCount,
+          total_files: progressData.data.total_files || 0
+        });
       }
     } else if (progressData.type === 'error') {
       // Don't show technical errors to users, show friendly messages instead
@@ -3156,61 +3503,69 @@ class CiberSegApp {
   }
 
   updateAntivirusStats(stats) {
+    // Update forensics section stats
     const threatsCount = document.getElementById('antivirus-threats-count');
     const scannedCount = document.getElementById('antivirus-scanned-count');
     const lastScan = document.getElementById('antivirus-last-scan');
     
-    // Update counts
-    if (threatsCount) {
-      threatsCount.textContent = stats.threats_found || 0;
-      // Add threat notification styling
-      if (stats.threats_found > 0) {
-        threatsCount.className = 'text-lg font-bold text-red-600 animate-pulse';
-        threatsCount.title = `⚠️ ${stats.threats_found} amenaza(s) detectada(s)`;
-      } else {
-        threatsCount.className = 'text-lg font-bold text-green-600';
-        threatsCount.title = '✅ Sistema limpio';
-      }
-    }
+    // Update dashboard section stats
+    const dashboardThreatsCount = document.getElementById('antivirus-dashboard-threats-count');
+    const dashboardScannedCount = document.getElementById('antivirus-dashboard-scanned-count');
+    const dashboardLastScan = document.getElementById('antivirus-dashboard-last-scan');
     
-    if (scannedCount) {
-      scannedCount.textContent = stats.files_scanned || 0;
-      // Add file notification styling
-      if (stats.files_scanned > 0) {
-        scannedCount.className = 'text-lg font-bold text-blue-600';
-        scannedCount.title = `📁 ${stats.files_scanned} archivo(s) escaneado(s)`;
-      } else {
-        scannedCount.className = 'text-lg font-bold text-gray-600';
-        scannedCount.title = '📁 No hay archivos escaneados';
+    // Update counts for both sections
+    const updateCountElement = (element, count, isThreat = false) => {
+      if (element) {
+        element.textContent = count || 0;
+        if (isThreat) {
+          if (count > 0) {
+            element.className = 'text-lg font-bold text-red-600 animate-pulse';
+            element.title = `⚠️ ${count} amenaza(s) detectada(s)`;
+          } else {
+            element.className = 'text-lg font-bold text-green-600';
+            element.title = '✅ Sistema limpio';
+          }
+        } else {
+          if (count > 0) {
+            element.className = 'text-lg font-bold text-blue-600';
+            element.title = `📁 ${count} archivo(s) escaneado(s)`;
+          } else {
+            element.className = 'text-lg font-bold text-gray-600';
+            element.title = '📁 No hay archivos escaneados';
+          }
+        }
       }
-    }
+    };
     
-    // Update last scan with actual date and time
-    if (lastScan) {
-      const now = new Date();
-      const dateStr = now.toLocaleDateString('es-ES', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-      const timeStr = now.toLocaleTimeString('es-ES', {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      lastScan.textContent = `Último escaneo: ${dateStr} ${timeStr}`;
-      lastScan.title = `Escaneo completado el ${dateStr} a las ${timeStr}`;
-    }
+    updateCountElement(threatsCount, stats.threats_found, true);
+    updateCountElement(dashboardThreatsCount, stats.threats_found, true);
+    updateCountElement(scannedCount, stats.files_scanned, false);
+    updateCountElement(dashboardScannedCount, stats.files_scanned, false);
+    
+    // Update last scan with actual date and time for both sections
+    const updateLastScanElement = (element) => {
+      if (element) {
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('es-ES', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+        const timeStr = now.toLocaleTimeString('es-ES', {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        element.textContent = `Último escaneo: ${dateStr} ${timeStr}`;
+        element.title = `Escaneo completado el ${dateStr} a las ${timeStr}`;
+      }
+    };
+    
+    updateLastScanElement(lastScan);
+    updateLastScanElement(dashboardLastScan);
   }
 
   initializeAntivirusStats() {
-    // Initialize with default values - only update last scan if it's still "Nunca"
-    const lastScan = document.getElementById('antivirus-last-scan');
-    if (lastScan && lastScan.textContent.includes('Nunca')) {
-      // Keep "Nunca" for initial state
-      return;
-    }
-    
-    // Initialize stats display
+    // Always initialize with clean values - no threats shown until actual scan
     this.updateAntivirusStats({
       files_scanned: 0,
       threats_found: 0,
@@ -3229,17 +3584,32 @@ class CiberSegApp {
           this.updateLastScanDisplay(this.appData.lastScanDate);
         }
         
-        // Update total stats
+        // Update total stats for both dashboard and forensics sections
+        // Only show threats if there was a recent scan (within last 24 hours)
+        const hasRecentScan = this.appData.lastScanDate && 
+          (Date.now() - new Date(this.appData.lastScanDate).getTime()) < (24 * 60 * 60 * 1000);
+        
         this.updateAntivirusStats({
           files_scanned: this.appData.totalFilesScanned || 0,
-          threats_found: this.appData.totalThreatsFound || 0,
+          threats_found: hasRecentScan ? (this.appData.totalThreatsFound || 0) : 0,
           total_files: this.appData.totalFilesScanned || 0
+        });
+        
+        // Update dashboard antivirus status with app data
+        this.updateAntivirusDashboardStatus({
+          isActive: true,
+          lastScan: this.appData.lastScanDate || null,
+          threatsFound: hasRecentScan ? (this.appData.totalThreatsFound || 0) : 0,
+          filesScanned: this.appData.totalFilesScanned || 0
         });
         
         // Update analyzer display with persistent data
         if (this.appData.lastAnalysis) {
           this.updateAnalyzerDisplay(this.appData.lastAnalysis);
         }
+        
+        // Update dashboard statistics after loading all app data
+        await this.updateDashboardStatistics();
         
         console.log('App data loaded:', this.appData);
       }
@@ -3249,39 +3619,59 @@ class CiberSegApp {
   }
 
   updateLastScanDisplay(lastScanDate) {
-    const lastScan = document.getElementById('antivirus-last-scan');
-    if (lastScan && lastScanDate) {
-      const date = new Date(lastScanDate);
-      const now = new Date();
-      const diffMs = now - date;
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-      
-      let dateStr, timeStr;
-      if (diffDays === 0) {
-        dateStr = 'Hoy';
-      } else if (diffDays === 1) {
-        dateStr = 'Ayer';
-      } else if (diffDays < 7) {
-        dateStr = `Hace ${diffDays} días`;
-      } else {
-        dateStr = date.toLocaleDateString('es-ES');
+    // Update both forensics section and dashboard section
+    const lastScanElements = [
+      document.getElementById('antivirus-last-scan'),
+      document.getElementById('antivirus-dashboard-last-scan')
+    ];
+    
+    lastScanElements.forEach(lastScan => {
+      if (lastScan && lastScanDate) {
+        const date = new Date(lastScanDate);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        
+        let dateStr, timeStr;
+        if (diffDays === 0) {
+          dateStr = 'Hoy';
+        } else if (diffDays === 1) {
+          dateStr = 'Ayer';
+        } else if (diffDays < 7) {
+          dateStr = `Hace ${diffDays} días`;
+        } else {
+          dateStr = date.toLocaleDateString('es-ES');
+        }
+        
+        timeStr = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        lastScan.textContent = `Último escaneo: ${dateStr} ${timeStr}`;
+        lastScan.title = `Escaneo completado el ${date.toLocaleDateString('es-ES')} a las ${timeStr}`;
       }
-      
-      timeStr = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-      lastScan.textContent = `Último escaneo: ${dateStr} ${timeStr}`;
-      lastScan.title = `Escaneo completado el ${date.toLocaleDateString('es-ES')} a las ${timeStr}`;
-    }
+    });
   }
 
   async saveScanData(scanData) {
     try {
-      const result = await window.electronAPI.updateScanData(scanData);
+      // Prepare data to save with last scan date
+      const dataToSave = {
+        ...scanData,
+        lastScanDate: new Date().toISOString(),
+        totalFilesScanned: scanData.filesScanned || scanData.totalFilesScanned || 0,
+        totalThreatsFound: scanData.threatsFound || scanData.totalThreatsFound || 0
+      };
+      
+      const result = await window.electronAPI.updateScanData(dataToSave);
       if (result.success) {
         console.log('Scan data saved successfully');
         // Update local app data
-        this.appData = { ...this.appData, ...scanData };
-        // Update the last scan display
-        this.updateLastScanDisplay(new Date().toISOString());
+        this.appData = { ...this.appData, ...dataToSave };
+        // Update the last scan display for both sections
+        this.updateLastScanDisplay(dataToSave.lastScanDate);
+        // Update antivirus stats
+        this.updateAntivirusStats({
+          files_scanned: dataToSave.totalFilesScanned,
+          threats_found: dataToSave.totalThreatsFound
+        });
       }
     } catch (error) {
       console.error('Error saving scan data:', error);
@@ -3295,6 +3685,8 @@ class CiberSegApp {
         console.log('Analysis data saved successfully');
         // Update local app data
         this.appData = { ...this.appData, lastAnalysis: analysisData };
+        // Update dashboard status
+        this.updateForensicsDashboardStatus(analysisData);
       }
     } catch (error) {
       console.error('Error saving analysis data:', error);
@@ -3386,13 +3778,18 @@ class CiberSegApp {
             fileName: selectedFile.split('\\').pop().split('/').pop(), // Extract filename from path
             timestamp: Date.now(),
             filePath: selectedFile,
-            analysisResult: analysisResult
+            analysisResult: analysisResult,
+            suspicious: analysisResult.analysis?.security?.riskLevel === 'high' || analysisResult.analysis?.security?.riskLevel === 'medium'
           };
           
           await this.saveAnalysisData(analysisData);
           this.updateAnalyzerDisplay(analysisData);
           
-          this.addForensicsLogEntry('Analizador', `✅ Análisis completado: ${analysisResult.analysis.basic.name}`, 'success');
+          // Add activity log entry
+          this.addActivityLogEntry('forensics', 'Análisis completado', `Archivo analizado: ${analysisData.fileName}`, 'success');
+          
+          const fileName = analysisResult.analysis?.basic?.name || analysisData.fileName;
+          this.addForensicsLogEntry('Analizador', `✅ Análisis completado: ${fileName}`, 'success');
           this.showNotification('Análisis de archivo completado', 'success');
         } else {
           this.addForensicsLogEntry('Analizador', `❌ Error: ${analysisResult.message}`, 'error');
@@ -3410,12 +3807,22 @@ class CiberSegApp {
   displayAnalysisResults(analysisResult) {
     const { analysis } = analysisResult;
     
+    if (!analysis) {
+      this.addForensicsLogEntry('Analizador', 'Error: No se pudo obtener el análisis del archivo', 'error');
+      return;
+    }
+    
     // Create detailed analysis display
-    let analysisText = `📁 Archivo: ${analysis.basic.name}\n`;
-    analysisText += `📊 Tamaño: ${analysis.basic.sizeFormatted}\n`;
-    analysisText += `📝 Tipo: ${analysis.basic.type}\n`;
-    analysisText += `📅 Creado: ${new Date(analysis.basic.created).toLocaleString('es-ES')}\n`;
-    analysisText += `📅 Modificado: ${new Date(analysis.basic.modified).toLocaleString('es-ES')}\n\n`;
+    let analysisText = `📁 Archivo: ${analysis.basic?.name || 'Archivo desconocido'}\n`;
+    analysisText += `📊 Tamaño: ${analysis.basic?.sizeFormatted || 'Desconocido'}\n`;
+    analysisText += `📝 Tipo: ${analysis.basic?.type || 'Desconocido'}\n`;
+    
+    if (analysis.basic?.created) {
+      analysisText += `📅 Creado: ${new Date(analysis.basic.created).toLocaleString('es-ES')}\n`;
+    }
+    if (analysis.basic?.modified) {
+      analysisText += `📅 Modificado: ${new Date(analysis.basic.modified).toLocaleString('es-ES')}\n\n`;
+    }
     
     // Hash information
     if (analysis.hash) {
@@ -4596,13 +5003,8 @@ class CiberSegApp {
       <span class="${typeColors[type] || 'text-gray-400'}">${message}</span>
     `;
     
-    // Insert after the sticky progress container if it exists
-    const progressContainer = logDisplay.querySelector('.sticky-progress-container');
-    if (progressContainer) {
-      logDisplay.insertBefore(logEntry, progressContainer.nextSibling);
-    } else {
-      logDisplay.appendChild(logEntry);
-    }
+    // Always append new entries to the bottom of the log
+    logDisplay.appendChild(logEntry);
     
     // Auto-scroll to bottom, but keep progress bar visible
     logDisplay.scrollTop = logDisplay.scrollHeight;
@@ -4687,6 +5089,247 @@ class CiberSegApp {
     } else {
       logDisplay.insertBefore(resultDiv, logDisplay.firstChild);
     }
+  }
+
+  // URL Scanner Methods
+  async scanUrl() {
+    const urlInput = document.getElementById('url-input');
+    const scanBtn = document.getElementById('scan-url-btn');
+    const resultsContainer = document.getElementById('url-scan-results');
+    
+    if (!urlInput || !urlInput.value.trim()) {
+      this.showNotification('Por favor ingresa una URL válida', 'warning');
+      return;
+    }
+    
+    const url = urlInput.value.trim();
+    
+    // Validate URL format
+    try {
+      new URL(url);
+    } catch (error) {
+      this.showNotification('URL inválida. Por favor ingresa una URL válida (ej: https://ejemplo.com)', 'error');
+      return;
+    }
+    
+    // Disable button and show loading
+    if (scanBtn) {
+      scanBtn.disabled = true;
+      scanBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Escaneando...';
+    }
+    
+    // Show loading in results
+    if (resultsContainer) {
+      resultsContainer.innerHTML = `
+        <div class="text-center py-8">
+          <i class="fas fa-spinner fa-spin text-3xl text-blue-500 mb-2"></i>
+          <p class="text-gray-600">Escaneando URL...</p>
+          <p class="text-sm text-gray-500">${url}</p>
+        </div>
+      `;
+    }
+    
+    try {
+      // Simulate URL scanning (replace with actual backend call)
+      const result = await this.performUrlScan(url);
+      
+      // Display results
+      this.displayUrlScanResults(result);
+      
+      // Add to history
+      this.addToUrlScanHistory(result);
+      
+      // Update statistics
+      this.updateUrlScanStatistics(result);
+      
+      // Add activity log entry
+      this.addActivityLogEntry('urlscanner', 'URL escaneada', `URL analizada: ${url}`, result.isMalicious ? 'warning' : 'success');
+      
+      this.showNotification(`URL escaneada: ${result.isMalicious ? 'Amenaza detectada' : 'URL limpia'}`, result.isMalicious ? 'warning' : 'success');
+      
+    } catch (error) {
+      console.error('Error scanning URL:', error);
+      this.showNotification('Error al escanear la URL', 'error');
+      
+      if (resultsContainer) {
+        resultsContainer.innerHTML = `
+          <div class="text-center py-8">
+            <i class="fas fa-exclamation-triangle text-3xl text-red-500 mb-2"></i>
+            <p class="text-red-600">Error al escanear la URL</p>
+            <p class="text-sm text-gray-500">${error.message}</p>
+          </div>
+        `;
+      }
+    } finally {
+      // Re-enable button
+      if (scanBtn) {
+        scanBtn.disabled = false;
+        scanBtn.innerHTML = '<i class="fas fa-search"></i> Escanear';
+      }
+    }
+  }
+  
+  async performUrlScan(url) {
+    // Simulate URL scanning logic
+    // In a real implementation, this would call a backend API
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        // Simulate different scan results
+        const isMalicious = Math.random() < 0.1; // 10% chance of being malicious
+        const isSuspicious = Math.random() < 0.2; // 20% chance of being suspicious
+        
+        const result = {
+          url: url,
+          timestamp: new Date(),
+          isMalicious: isMalicious,
+          isSuspicious: isSuspicious,
+          threats: isMalicious ? ['Malware', 'Phishing'] : [],
+          reputation: isMalicious ? 'Malicious' : isSuspicious ? 'Suspicious' : 'Clean',
+          details: {
+            domain: new URL(url).hostname,
+            protocol: new URL(url).protocol,
+            path: new URL(url).pathname
+          }
+        };
+        
+        resolve(result);
+      }, 2000); // Simulate 2 second scan time
+    });
+  }
+  
+  displayUrlScanResults(result) {
+    const resultsContainer = document.getElementById('url-scan-results');
+    if (!resultsContainer) return;
+    
+    const statusColor = result.isMalicious ? 'red' : result.isSuspicious ? 'yellow' : 'green';
+    const statusIcon = result.isMalicious ? 'fa-exclamation-triangle' : result.isSuspicious ? 'fa-exclamation-circle' : 'fa-check-circle';
+    const statusText = result.isMalicious ? 'Maliciosa' : result.isSuspicious ? 'Sospechosa' : 'Limpia';
+    
+    resultsContainer.innerHTML = `
+      <div class="p-4 bg-${statusColor}-50 rounded-lg border border-${statusColor}-200">
+        <div class="flex items-center gap-3 mb-3">
+          <i class="fas ${statusIcon} text-${statusColor}-600 text-xl"></i>
+          <div>
+            <h5 class="font-semibold text-${statusColor}-800">${statusText}</h5>
+            <p class="text-sm text-gray-600">${result.url}</p>
+          </div>
+        </div>
+        
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span class="text-gray-600">Dominio:</span>
+            <span class="font-mono">${result.details.domain}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Protocolo:</span>
+            <span class="font-mono">${result.details.protocol}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Reputación:</span>
+            <span class="font-semibold text-${statusColor}-600">${result.reputation}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Escaneado:</span>
+            <span class="text-gray-500">${result.timestamp.toLocaleTimeString('es-ES')}</span>
+          </div>
+        </div>
+        
+        ${result.threats.length > 0 ? `
+          <div class="mt-3 pt-3 border-t border-${statusColor}-200">
+            <p class="text-sm font-medium text-${statusColor}-700 mb-1">Amenazas detectadas:</p>
+            <ul class="text-sm text-${statusColor}-600">
+              ${result.threats.map(threat => `<li>• ${threat}</li>`).join('')}
+            </ul>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+  
+  addToUrlScanHistory(result) {
+    this.urlScanHistory.unshift(result);
+    
+    // Keep only last 10 scans
+    if (this.urlScanHistory.length > 10) {
+      this.urlScanHistory = this.urlScanHistory.slice(0, 10);
+    }
+    
+    this.updateRecentUrlScans();
+  }
+  
+  updateRecentUrlScans() {
+    const container = document.getElementById('recent-url-scans');
+    if (!container) return;
+    
+    if (this.urlScanHistory.length === 0) {
+      container.innerHTML = `
+        <div class="text-center text-gray-500 py-4">
+          <p>No hay escaneos recientes</p>
+        </div>
+      `;
+      return;
+    }
+    
+    container.innerHTML = this.urlScanHistory.map(scan => {
+      const statusColor = scan.isMalicious ? 'red' : scan.isSuspicious ? 'yellow' : 'green';
+      const statusIcon = scan.isMalicious ? 'fa-exclamation-triangle' : scan.isSuspicious ? 'fa-exclamation-circle' : 'fa-check-circle';
+      
+      return `
+        <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+          <i class="fas ${statusIcon} text-${statusColor}-500"></i>
+          <div class="flex-1">
+            <p class="text-sm font-medium text-gray-800 truncate">${scan.url}</p>
+            <p class="text-xs text-gray-500">${scan.timestamp.toLocaleString('es-ES')}</p>
+          </div>
+          <span class="text-xs px-2 py-1 rounded-full bg-${statusColor}-100 text-${statusColor}-700">
+            ${scan.reputation}
+          </span>
+        </div>
+      `;
+    }).join('');
+  }
+  
+  updateUrlScanStatistics(result) {
+    const cleanCount = document.getElementById('url-scans-clean');
+    const maliciousCount = document.getElementById('url-scans-malicious');
+    const suspiciousCount = document.getElementById('url-scans-suspicious');
+    const totalCount = document.getElementById('url-scans-total');
+    
+    // Update counts based on scan history
+    const cleanScans = this.urlScanHistory.filter(scan => !scan.isMalicious && !scan.isSuspicious).length;
+    const maliciousScans = this.urlScanHistory.filter(scan => scan.isMalicious).length;
+    const suspiciousScans = this.urlScanHistory.filter(scan => scan.isSuspicious).length;
+    const totalScans = this.urlScanHistory.length;
+    
+    if (cleanCount) cleanCount.textContent = cleanScans;
+    if (maliciousCount) maliciousCount.textContent = maliciousScans;
+    if (suspiciousCount) suspiciousCount.textContent = suspiciousScans;
+    if (totalCount) totalCount.textContent = totalScans;
+  }
+  
+  clearUrlInput() {
+    const urlInput = document.getElementById('url-input');
+    const resultsContainer = document.getElementById('url-scan-results');
+    
+    if (urlInput) {
+      urlInput.value = '';
+    }
+    
+    if (resultsContainer) {
+      resultsContainer.innerHTML = `
+        <div class="text-center text-gray-500 py-8">
+          <i class="fas fa-search text-3xl mb-2"></i>
+          <p>Ingresa una URL para comenzar el escaneo</p>
+        </div>
+      `;
+    }
+    
+    this.showNotification('URL limpiada', 'info');
+  }
+  
+  showUrlScanHistory() {
+    this.showNotification('Historial de escaneos de URL', 'info');
+    // In a full implementation, this could open a modal with detailed history
   }
 }
 
