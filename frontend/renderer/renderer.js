@@ -838,8 +838,8 @@ class CiberSegApp {
 
       // Check antivirus status and recent scans
       if (this.appData && this.appData.lastScanDate) {
-        securityScore += 15; // Base antivirus score
-        activeModules++;
+      securityScore += 15; // Base antivirus score
+      activeModules++;
         
         // Add points for recent scans
         const scanTime = new Date(this.appData.lastScanDate);
@@ -856,8 +856,8 @@ class CiberSegApp {
 
       // Check forensics capability
       if (this.appData && this.appData.lastAnalysis) {
-        securityScore += 10; // Forensics available
-        activeModules++;
+      securityScore += 10; // Forensics available
+      activeModules++;
         
         // Track forensics activity
         const analysisTime = new Date(this.appData.lastAnalysis.timestamp);
@@ -954,7 +954,7 @@ class CiberSegApp {
         const hours = Math.floor(sessionTimeValue / 3600);
         const minutes = Math.floor((sessionTimeValue % 3600) / 60);
         const seconds = Math.floor(sessionTimeValue % 60);
-        sessionTime.textContent = `Sesión: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      sessionTime.textContent = `Sesión: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
       }
     }
 
@@ -1055,7 +1055,7 @@ class CiberSegApp {
         lastScanTime.textContent = analysisDate.toLocaleString();
       }
       if (lastScanFile) {
-        lastScanFile.textContent = `Archivo: ${lastAnalysis.filename}`;
+        lastScanFile.textContent = `Archivo: ${lastAnalysis.fileName}`;
       }
       if (lastScanStatus) {
         const statusText = lastAnalysis.suspicious ? 'Sospechoso' : 'Seguro';
@@ -2282,7 +2282,7 @@ class CiberSegApp {
         this.showNotification(result.message, 'success');
         // Add activity log entry
         this.addActivityLogEntry('vault', 'Contraseña generada', `Nueva contraseña para ${passwordData.label}`, 'success');
-        // Actualizar toda la información de bóveda
+    // Actualizar toda la información de bóveda
         await this.loadVaultCount();
         await this.loadPasswordList();
         // Update dashboard vault data
@@ -3521,11 +3521,11 @@ class CiberSegApp {
           if (count > 0) {
             element.className = 'text-lg font-bold text-red-600 animate-pulse';
             element.title = `⚠️ ${count} amenaza(s) detectada(s)`;
-          } else {
+      } else {
             element.className = 'text-lg font-bold text-green-600';
             element.title = '✅ Sistema limpio';
           }
-        } else {
+      } else {
           if (count > 0) {
             element.className = 'text-lg font-bold text-blue-600';
             element.title = `📁 ${count} archivo(s) escaneado(s)`;
@@ -3545,16 +3545,16 @@ class CiberSegApp {
     // Update last scan with actual date and time for both sections
     const updateLastScanElement = (element) => {
       if (element) {
-        const now = new Date();
-        const dateStr = now.toLocaleDateString('es-ES', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        });
-        const timeStr = now.toLocaleTimeString('es-ES', {
-          hour: '2-digit',
-          minute: '2-digit'
-        });
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      const timeStr = now.toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
         element.textContent = `Último escaneo: ${dateStr} ${timeStr}`;
         element.title = `Escaneo completado el ${dateStr} a las ${timeStr}`;
       }
@@ -3606,6 +3606,7 @@ class CiberSegApp {
         // Update analyzer display with persistent data
         if (this.appData.lastAnalysis) {
           this.updateAnalyzerDisplay(this.appData.lastAnalysis);
+          this.updateForensicsDashboardStatus(this.appData.lastAnalysis);
         }
         
         // Update dashboard statistics after loading all app data
@@ -3626,27 +3627,27 @@ class CiberSegApp {
     ];
     
     lastScanElements.forEach(lastScan => {
-      if (lastScan && lastScanDate) {
-        const date = new Date(lastScanDate);
-        const now = new Date();
-        const diffMs = now - date;
-        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        
-        let dateStr, timeStr;
-        if (diffDays === 0) {
-          dateStr = 'Hoy';
-        } else if (diffDays === 1) {
-          dateStr = 'Ayer';
-        } else if (diffDays < 7) {
-          dateStr = `Hace ${diffDays} días`;
-        } else {
-          dateStr = date.toLocaleDateString('es-ES');
-        }
-        
-        timeStr = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-        lastScan.textContent = `Último escaneo: ${dateStr} ${timeStr}`;
-        lastScan.title = `Escaneo completado el ${date.toLocaleDateString('es-ES')} a las ${timeStr}`;
+    if (lastScan && lastScanDate) {
+      const date = new Date(lastScanDate);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      
+      let dateStr, timeStr;
+      if (diffDays === 0) {
+        dateStr = 'Hoy';
+      } else if (diffDays === 1) {
+        dateStr = 'Ayer';
+      } else if (diffDays < 7) {
+        dateStr = `Hace ${diffDays} días`;
+      } else {
+        dateStr = date.toLocaleDateString('es-ES');
       }
+      
+      timeStr = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+      lastScan.textContent = `Último escaneo: ${dateStr} ${timeStr}`;
+      lastScan.title = `Escaneo completado el ${date.toLocaleDateString('es-ES')} a las ${timeStr}`;
+    }
     });
   }
 
@@ -3818,10 +3819,10 @@ class CiberSegApp {
     analysisText += `📝 Tipo: ${analysis.basic?.type || 'Desconocido'}\n`;
     
     if (analysis.basic?.created) {
-      analysisText += `📅 Creado: ${new Date(analysis.basic.created).toLocaleString('es-ES')}\n`;
+    analysisText += `📅 Creado: ${new Date(analysis.basic.created).toLocaleString('es-ES')}\n`;
     }
     if (analysis.basic?.modified) {
-      analysisText += `📅 Modificado: ${new Date(analysis.basic.modified).toLocaleString('es-ES')}\n\n`;
+    analysisText += `📅 Modificado: ${new Date(analysis.basic.modified).toLocaleString('es-ES')}\n\n`;
     }
     
     // Hash information
@@ -5004,7 +5005,7 @@ class CiberSegApp {
     `;
     
     // Always append new entries to the bottom of the log
-    logDisplay.appendChild(logEntry);
+      logDisplay.appendChild(logEntry);
     
     // Auto-scroll to bottom, but keep progress bar visible
     logDisplay.scrollTop = logDisplay.scrollHeight;

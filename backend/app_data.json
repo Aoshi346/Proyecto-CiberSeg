@@ -1,6 +1,13 @@
 {
-  "lastScanDate": "2025-10-01T03:08:12.770Z",
+  "lastScanDate": "2025-10-01T03:21:30.750Z",
   "scanHistory": [
+    {
+      "date": "2025-10-01T03:21:30.750Z",
+      "filesScanned": 0,
+      "threatsFound": 0,
+      "scanType": "unknown",
+      "duration": 0
+    },
     {
       "date": "2025-10-01T03:08:12.770Z",
       "filesScanned": 0,
@@ -9,12 +16,12 @@
       "duration": 0
     }
   ],
-  "totalScans": 1,
+  "totalScans": 2,
   "totalFilesScanned": 0,
   "totalThreatsFound": 0,
   "lastAnalysis": {
     "fileName": "forensics_results_2025-10-01.txt",
-    "timestamp": 1759288092757,
+    "timestamp": 1759288890730,
     "filePath": "C:\\Users\\aoshi\\Downloads\\forensics_results_2025-10-01.txt",
     "analysisResult": {
       "success": true,
@@ -29,7 +36,7 @@
           "type": "text",
           "created": "2025-10-01T02:24:09.602Z",
           "modified": "2025-10-01T02:24:10.495Z",
-          "accessed": "2025-10-01T02:24:10.944Z",
+          "accessed": "2025-10-01T03:08:10.903Z",
           "permissions": "100666",
           "isHidden": false,
           "isExecutable": false
@@ -48,7 +55,7 @@
             "size": 13949,
             "created": "2025-10-01T02:24:09.602Z",
             "modified": "2025-10-01T02:24:10.495Z",
-            "accessed": "2025-10-01T02:24:10.944Z"
+            "accessed": "2025-10-01T03:08:10.903Z"
           },
           "extended": {
             "document": {
@@ -83,8 +90,9 @@
           ]
         }
       },
-      "timestamp": "2025-10-01T03:08:12.743Z",
+      "timestamp": "2025-10-01T03:21:30.728Z",
       "duration": 0
-    }
+    },
+    "suspicious": false
   }
 }
