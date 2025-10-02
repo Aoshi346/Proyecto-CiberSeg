@@ -11,6 +11,7 @@ class CiberSegApp {
 
   async init() {
     this.setupEventListeners();
+    this.setupOptimizedInputListeners();
     this.setupAnimations();
     this.initializeKeylogger();
     this.initializeAntivirusStats();
@@ -32,11 +33,17 @@ class CiberSegApp {
 
   setupDashboardRefresh() {
     // Refresh dashboard data every 30 seconds
+    // Dashboard refresh interval - reduced frequency to improve performance
     setInterval(() => {
       if (this.currentSection === 'dashboard') {
-        this.refreshDashboardData();
+        // Use requestIdleCallback for better performance
+        if (window.requestIdleCallback) {
+          requestIdleCallback(() => this.refreshDashboardData());
+        } else {
+          setTimeout(() => this.refreshDashboardData(), 0);
+        }
       }
-    }, 30000);
+    }, 60000); // Increased from 30s to 60s
 
     // Also refresh when navigating to dashboard
     const originalNavigateToSection = this.navigateToSection.bind(this);
@@ -211,6 +218,36 @@ class CiberSegApp {
         await this.handleAntivirusProgress(progressData);
       });
     }
+  }
+
+  // Optimize input field responsiveness
+  setupOptimizedInputListeners() {
+    // Add optimized event listeners for all input fields
+    const inputFields = document.querySelectorAll('input, textarea');
+    
+    inputFields.forEach(input => {
+      // Use passive listeners for better performance
+      input.addEventListener('focus', () => {
+        // Ensure input is immediately responsive
+        input.style.pointerEvents = 'auto';
+        input.style.zIndex = '10';
+      }, { passive: true });
+      
+      input.addEventListener('blur', () => {
+        // Reset styles when not focused
+        input.style.pointerEvents = '';
+        input.style.zIndex = '';
+      }, { passive: true });
+      
+      // Optimize input events with debouncing
+      let inputTimeout;
+      input.addEventListener('input', () => {
+        clearTimeout(inputTimeout);
+        inputTimeout = setTimeout(() => {
+          // Any input processing here
+        }, 50); // Short debounce for responsiveness
+      }, { passive: true });
+    });
   }
 
   setupButtonInteractions() {
@@ -774,18 +811,25 @@ class CiberSegApp {
   }
 
   async loadDashboardData() {
-    // Load all dashboard data
-    await this.loadVaultCount();
-    await this.loadRecentPasswords();
-    await this.loadPasswordList();
-    await this.loadKeyloggerStatus();
-    await this.loadAntivirusStatus();
-    await this.loadForensicsStatus();
-    await this.loadSystemStatus();
-    await this.updateDashboardStatistics();
-    this.updateLastActivity();
-    // Ensure vault dashboard data is loaded
-    await this.loadVaultDashboardData();
+    try {
+      // Run all dashboard data loading operations in parallel for better performance
+      await Promise.all([
+        this.loadVaultCount(),
+        this.loadRecentPasswords(),
+        this.loadPasswordList(),
+        this.loadKeyloggerStatus(),
+        this.loadAntivirusStatus(),
+        this.loadForensicsStatus(),
+        this.loadSystemStatus(),
+        this.loadVaultDashboardData()
+      ]);
+      
+      // Update statistics and activity after all data is loaded
+      await this.updateDashboardStatistics();
+      this.updateLastActivity();
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    }
   }
 
   // Track module usage for scoring

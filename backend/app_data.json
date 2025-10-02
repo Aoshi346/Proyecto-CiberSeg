@@ -1,79 +1,65 @@
 {
-  "lastScanDate": "2025-10-02T04:17:56.380Z",
+  "lastScanDate": "2025-10-02T04:31:25.587Z",
   "scanHistory": [
     {
-      "date": "2025-10-02T04:17:56.380Z",
-      "filesScanned": 1,
-      "threatsFound": 0,
-      "scanType": "unknown",
-      "duration": 1759378676379
-    },
-    {
-      "date": "2025-10-02T04:17:44.305Z",
+      "date": "2025-10-02T04:31:25.587Z",
       "filesScanned": 0,
       "threatsFound": 0,
       "scanType": "unknown",
       "duration": 0
     },
     {
-      "date": "2025-10-02T04:17:39.512Z",
+      "date": "2025-10-02T04:31:22.548Z",
       "filesScanned": 0,
       "threatsFound": 0,
       "scanType": "unknown",
       "duration": 0
     },
     {
-      "date": "2025-10-02T04:17:34.219Z",
+      "date": "2025-10-02T04:30:55.688Z",
       "filesScanned": 0,
       "threatsFound": 0,
       "scanType": "unknown",
       "duration": 0
     },
     {
-      "date": "2025-10-02T04:17:17.514Z",
+      "date": "2025-10-02T04:30:51.273Z",
       "filesScanned": 0,
       "threatsFound": 0,
       "scanType": "unknown",
       "duration": 0
     },
     {
-      "date": "2025-10-02T04:17:11.149Z",
+      "date": "2025-10-02T04:30:38.164Z",
       "filesScanned": 0,
       "threatsFound": 0,
       "scanType": "unknown",
       "duration": 0
     },
     {
-      "date": "2025-10-02T04:17:08.948Z",
+      "date": "2025-10-02T04:30:31.859Z",
       "filesScanned": 0,
       "threatsFound": 0,
       "scanType": "unknown",
       "duration": 0
     },
     {
-      "date": "2025-10-02T04:16:59.896Z",
+      "date": "2025-10-02T04:30:16.112Z",
       "filesScanned": 0,
       "threatsFound": 0,
       "scanType": "unknown",
       "duration": 0
     },
     {
-      "date": "2025-10-02T04:13:53.393Z",
-      "filesScanned": 0,
-      "threatsFound": 0,
-      "scanType": "unknown",
-      "duration": 0
-    },
-    {
-      "date": "2025-10-02T04:13:06.621Z",
+      "date": "2025-10-02T04:30:12.232Z",
       "filesScanned": 0,
       "threatsFound": 0,
       "scanType": "unknown",
       "duration": 0
     }
   ],
-  "totalScans": 11,
-  "totalFilesScanned": 1,
+  "totalScans": 8,
+  "totalFilesScanned": 0,
   "totalThreatsFound": 0,
   "lastAnalysis": {
     "fileName": "suspicious_script.bat",

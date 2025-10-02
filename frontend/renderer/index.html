@@ -185,6 +185,20 @@
       border-radius: 4px !important;
     }
     
+    /* Optimize input field responsiveness */
+    input, textarea {
+      will-change: auto !important;
+      transform: translateZ(0) !important; /* Force hardware acceleration */
+      backface-visibility: hidden !important;
+    }
+    
+    /* Ensure input fields are always responsive */
+    input:focus, textarea:focus {
+      pointer-events: auto !important;
+      z-index: 10 !important;
+      position: relative !important;
+    }
+    
     /* Fix URL input field - ensure it's clickable and has single border */
     #url-input {
       pointer-events: auto !important;
