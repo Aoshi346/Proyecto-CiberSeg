@@ -48,11 +48,23 @@ python antivirus.py scan --directory "ruta/al/directorio"
 # Escaneo rápido del sistema (directorios comunes)
 python antivirus.py scan --scan-type quick
 
+# Escanear una URL
+python antivirus.py scan-url --url "https://ejemplo.com"
+
+# Escanear un dominio
+python antivirus.py scan-domain --domain "ejemplo.com"
+
+# Escanear una dirección IP
+python antivirus.py scan-ip --ip "192.168.1.1"
+
 # Obtener estado del antivirus
 python antivirus.py status
 
 # Obtener estadísticas de escaneo
 python antivirus.py stats
+
+# Limpiar caché de escaneos de URL
+python antivirus.py clear-url-cache
 
 # Actualizar base de datos (placeholder)
 python antivirus.py update-db
@@ -67,8 +79,14 @@ El módulo está diseñado para trabajar con el proceso principal de Electron a 
 - **Escaneo por Hash de Archivo**: Escaneo rápido usando hashes SHA256
 - **Escaneo por Subida de Archivo**: Subir archivos para análisis integral
 - **Escaneo de Directorios**: Escanear directorios completos recursivamente
+- **Escaneo de URLs**: Analizar URLs usando más de 70 motores antivirus
+- **Escaneo de Dominios**: Análisis completo de dominios y subdominios
+- **Escaneo de IPs**: Verificar direcciones IP contra bases de datos de amenazas
+- **Caché Inteligente**: Sistema de caché para evitar escaneos repetidos
 - **Resultados en Tiempo Real**: Obtener resultados de escaneo inmediatos
 - **Detección de Amenazas**: Identificar malware usando más de 70 motores antivirus
+- **Rate Limiting**: Control automático de velocidad de API para cumplir límites
+- **Manejo de Errores**: Gestión robusta de errores y reintentos automáticos
 - **Seguimiento de Estadísticas**: Rastrear historial de escaneos y estadísticas
 
 ## Límites de API

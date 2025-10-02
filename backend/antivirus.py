@@ -90,11 +90,15 @@ class VirusTotalAntivirus:
         self.scan_timeout = SCAN_TIMEOUT_SECONDS
         self.rate_limit_delay = API_RATE_LIMIT_DELAY
         self.scan_history = []
+        self.url_scan_cache = {}  # Cache for URL scan results
+        self.cache_expiry = 3600  # Cache expiry time in seconds (1 hour)
         self.stats = {
             'files_scanned': 0,
             'threats_found': 0,
             'last_scan_time': None,
-            'api_calls_made': 0
+            'api_calls_made': 0,
+            'url_scans_cached': 0,
+            'url_scans_performed': 0
         }
         
         # Progress streaming
@@ -119,6 +123,33 @@ class VirusTotalAntivirus:
         """Send progress update if streaming is enabled"""
         if self.progress_streamer:
             self.progress_streamer.add_progress(message, progress_type, data)
+    
+    def _is_cache_valid(self, cache_entry: Dict) -> bool:
+        """Check if cache entry is still valid"""
+        if not cache_entry or 'timestamp' not in cache_entry:
+            return False
+        
+        current_time = time.time()
+        return (current_time - cache_entry['timestamp']) < self.cache_expiry
+    
+    def _get_cached_result(self, url: str) -> Optional[Dict]:
+        """Get cached result for URL if valid"""
+        if url in self.url_scan_cache:
+            cache_entry = self.url_scan_cache[url]
+            if self._is_cache_valid(cache_entry):
+                self.stats['url_scans_cached'] += 1
+                return cache_entry['result']
+            else:
+                # Remove expired cache entry
+                del self.url_scan_cache[url]
+        return None
+    
+    def _cache_result(self, url: str, result: Dict):
+        """Cache scan result for URL"""
+        self.url_scan_cache[url] = {
+            'result': result,
+            'timestamp': time.time()
+        }
     
     def get_file_hash(self, file_path: str, hash_type: str = 'sha256') -> str:
         """
@@ -982,6 +1013,353 @@ class VirusTotalAntivirus:
             # Clean up progress streaming
             if self.progress_streamer:
                 self.progress_streamer.stop_streaming()
+    def scan_url(self, url: str) -> Dict[str, Any]:
+        """
+        Scan a URL using VirusTotal API with caching
+        
+        Args:
+            url: URL to scan
+            
+        Returns:
+            Scan results dictionary
+        """
+        if not self.api_key:
+            return {
+                'success': False,
+                'message': 'No VirusTotal API key provided',
+                'threats': [],
+                'scan_date': None
+            }
+        
+        try:
+            # Check cache first
+            cached_result = self._get_cached_result(url)
+            if cached_result:
+                cached_result['cached'] = True
+                return cached_result
+            
+            # First check if URL already has a report
+            report_result = self.get_url_report(url)
+            
+            if report_result['success'] and report_result.get('scan_date'):
+                # URL already scanned, cache and return existing report
+                report_result['cached'] = False
+                self._cache_result(url, report_result)
+                self.stats['url_scans_performed'] += 1
+                return report_result
+            
+            # If no existing report, submit URL for scanning
+            scan_result = self.submit_url_for_scanning(url)
+            if scan_result['success']:
+                scan_result['cached'] = False
+                self._cache_result(url, scan_result)
+                self.stats['url_scans_performed'] += 1
+            
+            return scan_result
+            
+        except Exception as e:
+            logger.error(f"Error scanning URL: {e}")
+            return {
+                'success': False,
+                'message': f'URL scan error: {e}',
+                'threats': [],
+                'scan_date': None
+            }
+    
+    def get_url_report(self, url: str) -> Dict[str, Any]:
+        """
+        Get existing URL report from VirusTotal
+        
+        Args:
+            url: URL to check
+            
+        Returns:
+            Report results dictionary
+        """
+        if not self.api_key:
+            return {
+                'success': False,
+                'message': 'No VirusTotal API key provided',
+                'threats': [],
+                'scan_date': None
+            }
+        
+        try:
+            url_endpoint = f"{self.base_url}/url/report"
+            params = {
+                'apikey': self.api_key,
+                'resource': url
+            }
+            
+            response = requests.get(url_endpoint, params=params, timeout=30)
+            self.stats['api_calls_made'] += 1
+            
+            # Rate limiting
+            time.sleep(self.rate_limit_delay)
+            
+            if response.status_code == 200:
+                result = response.json()
+                
+                if result.get('response_code') == 1:  # URL found in database
+                    threats = []
+                    positives = result.get('positives', 0)
+                    total_scans = result.get('total', 0)
+                    
+                    if positives > 0:
+                        scans = result.get('scans', {})
+                        for engine, scan_result in scans.items():
+                            if scan_result.get('detected'):
+                                threats.append({
+                                    'engine': engine,
+                                    'name': scan_result.get('result', 'Unknown threat'),
+                                    'severity': 'high' if positives > total_scans * 0.5 else 'medium'
+                                })
+                    
+                    return {
+                        'success': True,
+                        'url': url,
+                        'threats': threats,
+                        'scan_date': result.get('scan_date'),
+                        'positives': positives,
+                        'total_scans': total_scans,
+                        'permalink': result.get('permalink'),
+                        'message': f'URL report retrieved (detected by {positives}/{total_scans} engines)'
+                    }
+                else:
+                    return {
+                        'success': True,
+                        'url': url,
+                        'threats': [],
+                        'scan_date': None,
+                        'positives': 0,
+                        'total_scans': 0,
+                        'message': 'URL not found in VirusTotal database'
+                    }
+            else:
+                return {
+                    'success': False,
+                    'message': f'API error: {response.status_code}',
+                    'threats': [],
+                    'scan_date': None
+                }
+                
+        except Exception as e:
+            logger.error(f"Error getting URL report: {e}")
+            return {
+                'success': False,
+                'message': f'Report error: {e}',
+                'threats': [],
+                'scan_date': None
+            }
+    
+    def submit_url_for_scanning(self, url: str) -> Dict[str, Any]:
+        """
+        Submit URL for scanning to VirusTotal
+        
+        Args:
+            url: URL to submit for scanning
+            
+        Returns:
+            Submission results dictionary
+        """
+        if not self.api_key:
+            return {
+                'success': False,
+                'message': 'No VirusTotal API key provided',
+                'threats': [],
+                'scan_date': None
+            }
+        
+        try:
+            url_endpoint = f"{self.base_url}/url/scan"
+            params = {
+                'apikey': self.api_key,
+                'url': url
+            }
+            
+            response = requests.post(url_endpoint, params=params, timeout=30)
+            self.stats['api_calls_made'] += 1
+            
+            # Rate limiting
+            time.sleep(self.rate_limit_delay)
+            
+            if response.status_code == 200:
+                result = response.json()
+                scan_id = result.get('scan_id')
+                
+                if scan_id:
+                    # Wait a moment for scan to process, then get results
+                    time.sleep(2)
+                    return self.get_url_report(url)
+                else:
+                    return {
+                        'success': False,
+                        'message': 'Failed to get scan ID',
+                        'threats': [],
+                        'scan_date': None
+                    }
+            else:
+                return {
+                    'success': False,
+                    'message': f'Submission error: {response.status_code}',
+                    'threats': [],
+                    'scan_date': None
+                }
+                
+        except Exception as e:
+            logger.error(f"Error submitting URL for scanning: {e}")
+            return {
+                'success': False,
+                'message': f'Submission error: {e}',
+                'threats': [],
+                'scan_date': None
+            }
+    
+    def scan_domain(self, domain: str) -> Dict[str, Any]:
+        """
+        Scan a domain using VirusTotal API
+        
+        Args:
+            domain: Domain to scan
+            
+        Returns:
+            Domain scan results dictionary
+        """
+        if not self.api_key:
+            return {
+                'success': False,
+                'message': 'No VirusTotal API key provided',
+                'threats': [],
+                'scan_date': None
+            }
+        
+        try:
+            url_endpoint = f"{self.base_url}/domain/report"
+            params = {
+                'apikey': self.api_key,
+                'domain': domain
+            }
+            
+            response = requests.get(url_endpoint, params=params, timeout=30)
+            self.stats['api_calls_made'] += 1
+            
+            # Rate limiting
+            time.sleep(self.rate_limit_delay)
+            
+            if response.status_code == 200:
+                result = response.json()
+                
+                threats = []
+                if result.get('detected_urls'):
+                    for detected_url in result['detected_urls']:
+                        threats.append({
+                            'type': 'malicious_url',
+                            'url': detected_url.get('url'),
+                            'positives': detected_url.get('positives', 0),
+                            'total_scans': detected_url.get('total', 0),
+                            'scan_date': detected_url.get('scan_date')
+                        })
+                
+                return {
+                    'success': True,
+                    'domain': domain,
+                    'threats': threats,
+                    'scan_date': result.get('scan_date'),
+                    'detected_urls_count': len(result.get('detected_urls', [])),
+                    'subdomains': result.get('subdomains', []),
+                    'resolutions': result.get('resolutions', []),
+                    'message': f'Domain analysis completed'
+                }
+            else:
+                return {
+                    'success': False,
+                    'message': f'Domain scan error: {response.status_code}',
+                    'threats': [],
+                    'scan_date': None
+                }
+                
+        except Exception as e:
+            logger.error(f"Error scanning domain: {e}")
+            return {
+                'success': False,
+                'message': f'Domain scan error: {e}',
+                'threats': [],
+                'scan_date': None
+            }
+    
+    def scan_ip_address(self, ip_address: str) -> Dict[str, Any]:
+        """
+        Scan an IP address using VirusTotal API
+        
+        Args:
+            ip_address: IP address to scan
+            
+        Returns:
+            IP scan results dictionary
+        """
+        if not self.api_key:
+            return {
+                'success': False,
+                'message': 'No VirusTotal API key provided',
+                'threats': [],
+                'scan_date': None
+            }
+        
+        try:
+            url_endpoint = f"{self.base_url}/ip-address/report"
+            params = {
+                'apikey': self.api_key,
+                'ip': ip_address
+            }
+            
+            response = requests.get(url_endpoint, params=params, timeout=30)
+            self.stats['api_calls_made'] += 1
+            
+            # Rate limiting
+            time.sleep(self.rate_limit_delay)
+            
+            if response.status_code == 200:
+                result = response.json()
+                
+                threats = []
+                if result.get('detected_urls'):
+                    for detected_url in result['detected_urls']:
+                        threats.append({
+                            'type': 'malicious_url',
+                            'url': detected_url.get('url'),
+                            'positives': detected_url.get('positives', 0),
+                            'total_scans': detected_url.get('total', 0),
+                            'scan_date': detected_url.get('scan_date')
+                        })
+                
+                return {
+                    'success': True,
+                    'ip_address': ip_address,
+                    'threats': threats,
+                    'scan_date': result.get('scan_date'),
+                    'detected_urls_count': len(result.get('detected_urls', [])),
+                    'country': result.get('country'),
+                    'asn': result.get('asn'),
+                    'resolutions': result.get('resolutions', []),
+                    'message': f'IP address analysis completed'
+                }
+            else:
+                return {
+                    'success': False,
+                    'message': f'IP scan error: {response.status_code}',
+                    'threats': [],
+                    'scan_date': None
+                }
+                
+        except Exception as e:
+            logger.error(f"Error scanning IP address: {e}")
+            return {
+                'success': False,
+                'message': f'IP scan error: {e}',
+                'threats': [],
+                'scan_date': None
+            }
+
     
     def get_status(self) -> Dict[str, Any]:
         """Get antivirus status"""
@@ -998,7 +1376,20 @@ class VirusTotalAntivirus:
         return {
             'success': True,
             'stats': self.stats,
-            'scan_history': self.scan_history[-10:]  # Last 10 scans
+            'scan_history': self.scan_history[-10:],  # Last 10 scans
+            'url_cache_size': len(self.url_scan_cache),
+            'cache_expiry_hours': self.cache_expiry / 3600
+        }
+    
+    def clear_url_cache(self) -> Dict[str, Any]:
+        """Clear URL scan cache"""
+        cache_size = len(self.url_scan_cache)
+        self.url_scan_cache.clear()
+        return {
+            'success': True,
+            'message': f'Cleared {cache_size} cached URL scan results',
+            'cache_size_before': cache_size,
+            'cache_size_after': 0
         }
     
     def update_database(self) -> Dict[str, Any]:
@@ -1012,8 +1403,11 @@ class VirusTotalAntivirus:
 def main():
     """Main function for command line usage"""
     parser = argparse.ArgumentParser(description='CiberSeg Antivirus Scanner')
-    parser.add_argument('action', choices=['scan', 'scan-file', 'scan-folders', 'status', 'stats', 'update-db'],
+    parser.add_argument('action', choices=['scan', 'scan-file', 'scan-folders', 'scan-url', 'scan-domain', 'scan-ip', 'status', 'stats', 'update-db', 'clear-url-cache'],
                        help='Action to perform')
+    parser.add_argument('--url', help='URL to scan')
+    parser.add_argument('--domain', help='Domain to scan')
+    parser.add_argument('--ip', help='IP address to scan')
     parser.add_argument('--file', help='File path to scan')
     parser.add_argument('--directory', help='Directory path to scan')
     parser.add_argument('--folders', nargs='+', help='Multiple folder paths to scan')
@@ -1071,6 +1465,24 @@ def main():
             else:
                 result = antivirus.scan_selected_folders(args.folders)
         
+        elif args.action == 'scan-url':
+            if not args.url:
+                result = {'success': False, 'message': 'URL required for scan-url action'}
+            else:
+                result = antivirus.scan_url(args.url)
+        
+        elif args.action == 'scan-domain':
+            if not args.domain:
+                result = {'success': False, 'message': 'Domain required for scan-domain action'}
+            else:
+                result = antivirus.scan_domain(args.domain)
+        
+        elif args.action == 'scan-ip':
+            if not args.ip:
+                result = {'success': False, 'message': 'IP address required for scan-ip action'}
+            else:
+                result = antivirus.scan_ip_address(args.ip)
+        
         elif args.action == 'status':
             result = antivirus.get_status()
         
@@ -1079,6 +1491,9 @@ def main():
         
         elif args.action == 'update-db':
             result = antivirus.update_database()
+        
+        elif args.action == 'clear-url-cache':
+            result = antivirus.clear_url_cache()
         
         # Output result as JSON
         print(json.dumps(result, indent=2))

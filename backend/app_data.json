@@ -1,83 +1,145 @@
 {
-  "lastScanDate": "2025-10-01T03:21:30.750Z",
+  "lastScanDate": "2025-10-02T04:17:56.380Z",
   "scanHistory": [
     {
-      "date": "2025-10-01T03:21:30.750Z",
+      "date": "2025-10-02T04:17:56.380Z",
+      "filesScanned": 1,
+      "threatsFound": 0,
+      "scanType": "unknown",
+      "duration": 1759378676379
+    },
+    {
+      "date": "2025-10-02T04:17:44.305Z",
       "filesScanned": 0,
       "threatsFound": 0,
       "scanType": "unknown",
       "duration": 0
     },
     {
-      "date": "2025-10-01T03:08:12.770Z",
+      "date": "2025-10-02T04:17:39.512Z",
+      "filesScanned": 0,
+      "threatsFound": 0,
+      "scanType": "unknown",
+      "duration": 0
+    },
+    {
+      "date": "2025-10-02T04:17:34.219Z",
+      "filesScanned": 0,
+      "threatsFound": 0,
+      "scanType": "unknown",
+      "duration": 0
+    },
+    {
+      "date": "2025-10-02T04:17:17.514Z",
+      "filesScanned": 0,
+      "threatsFound": 0,
+      "scanType": "unknown",
+      "duration": 0
+    },
+    {
+      "date": "2025-10-02T04:17:11.149Z",
+      "filesScanned": 0,
+      "threatsFound": 0,
+      "scanType": "unknown",
+      "duration": 0
+    },
+    {
+      "date": "2025-10-02T04:17:08.948Z",
+      "filesScanned": 0,
+      "threatsFound": 0,
+      "scanType": "unknown",
+      "duration": 0
+    },
+    {
+      "date": "2025-10-02T04:16:59.896Z",
+      "filesScanned": 0,
+      "threatsFound": 0,
+      "scanType": "unknown",
+      "duration": 0
+    },
+    {
+      "date": "2025-10-02T04:13:53.393Z",
+      "filesScanned": 0,
+      "threatsFound": 0,
+      "scanType": "unknown",
+      "duration": 0
+    },
+    {
+      "date": "2025-10-02T04:13:06.621Z",
       "filesScanned": 0,
       "threatsFound": 0,
       "scanType": "unknown",
       "duration": 0
     }
   ],
-  "totalScans": 2,
-  "totalFilesScanned": 0,
+  "totalScans": 11,
+  "totalFilesScanned": 1,
   "totalThreatsFound": 0,
   "lastAnalysis": {
-    "fileName": "forensics_results_2025-10-01.txt",
-    "timestamp": 1759288890730,
-    "filePath": "C:\\Users\\aoshi\\Downloads\\forensics_results_2025-10-01.txt",
+    "fileName": "suspicious_script.bat",
+    "timestamp": 1759378329676,
+    "filePath": "C:\\Users\\aoshi\\OneDrive\\Desktop\\Antivirus_Test_Files\\suspicious_script.bat",
     "analysisResult": {
       "success": true,
-      "filePath": "C:\\Users\\aoshi\\Downloads\\forensics_results_2025-10-01.txt",
+      "filePath": "C:\\Users\\aoshi\\OneDrive\\Desktop\\Antivirus_Test_Files\\suspicious_script.bat",
       "analysisType": "full",
       "analysis": {
         "basic": {
-          "name": "forensics_results_2025-10-01.txt",
-          "extension": ".txt",
-          "size": 13949,
-          "sizeFormatted": "13.62 KB",
-          "type": "text",
-          "created": "2025-10-01T02:24:09.602Z",
-          "modified": "2025-10-01T02:24:10.495Z",
-          "accessed": "2025-10-01T03:08:10.903Z",
+          "name": "suspicious_script.bat",
+          "extension": ".bat",
+          "size": 456,
+          "sizeFormatted": "456 Bytes",
+          "type": "script",
+          "created": "2025-10-02T04:10:24.352Z",
+          "modified": "2025-10-02T04:10:24.353Z",
+          "accessed": "2025-10-02T04:10:40.530Z",
           "permissions": "100666",
           "isHidden": false,
-          "isExecutable": false
+          "isExecutable": true
         },
         "hash": {
-          "md5": "8f47f21aef1407acc15927aef79db799",
-          "sha1": "93764f89f3c7cc8c3b2def7b0c148a64f7cfece1",
-          "sha256": "d384769e485594dcb9ad896203b7e2a742318c7c62903eff8f7a65692ccc9f38",
-          "sha512": "d902359c38614f1a4ecf185ce777232fa2c79ddeb7b7dedf4fd22ab005a701b15e05f8266fabd13ba9880b206fd0c5e2d9073874db734420d67a0d6f17f79ba7"
+          "md5": "35f37780b1c07c8739e5a66be1aa5be7",
+          "sha1": "d6e49ee9dc909167f166905c1ee45f71e985565c",
+          "sha256": "596d085fcc639d70971c5aefb29f86157524639241a797a134315e84a1744331",
+          "sha512": "017cc8fc3236bfa02ec12c9512ff5d97e88c5a316345ee346dcace9e4a5ac196d486fe775dbbf3d216a0ce1cd1045eb9abeb38c84f56b1ba1240bf830b06881c"
         },
         "metadata": {
           "basic": {
-            "name": "forensics_results_2025-10-01.txt",
-            "directory": "C:\\Users\\aoshi\\Downloads",
-            "extension": ".txt",
-            "size": 13949,
-            "created": "2025-10-01T02:24:09.602Z",
-            "modified": "2025-10-01T02:24:10.495Z",
-            "accessed": "2025-10-01T03:08:10.903Z"
+            "name": "suspicious_script.bat",
+            "directory": "C:\\Users\\aoshi\\OneDrive\\Desktop\\Antivirus_Test_Files",
+            "extension": ".bat",
+            "size": 456,
+            "created": "2025-10-02T04:10:24.352Z",
+            "modified": "2025-10-02T04:10:24.353Z",
+            "accessed": "2025-10-02T04:10:40.530Z"
           },
           "extended": {
-            "document": {
-              "format": ".txt",
-              "hasMetadata": false,
-              "pages": 0,
-              "author": "unknown"
+            "executable": {
+              "format": ".bat",
+              "architecture": "unknown",
+              "isSigned": false,
+              "hasDigitalSignature": false
             }
           }
         },
         "content": {
-          "type": "text",
+          "type": "script",
           "encoding": "utf8",
-          "language": "unknown",
-          "lines": 544,
-          "words": 1083,
-          "characters": 13621,
+          "language": "batch",
+          "lines": 15,
+          "words": 74,
+          "characters": 456,
           "suspiciousPatterns": []
         },
         "security": {
           "riskLevel": "low",
-          "threats": [],
+          "threats": [
+            {
+              "type": "executable_file",
+              "severity": "medium",
+              "description": "Archivo ejecutable detectado"
+            }
+          ],
           "vulnerabilities": [
             {
               "type": "permissive_permissions",
@@ -86,11 +148,13 @@
             }
           ],
           "recommendations": [
+            "Verificar la fuente del archivo ejecutable",
+            "Ejecutar escaneo antivirus adicional",
             "Restringir permisos del archivo"
           ]
         }
       },
-      "timestamp": "2025-10-01T03:21:30.728Z",
+      "timestamp": "2025-10-02T04:12:09.673Z",
       "duration": 0
     },
     "suspicious": false

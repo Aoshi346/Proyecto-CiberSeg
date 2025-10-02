@@ -818,6 +818,36 @@ function setupIPC() {
     }
   });
 
+  ipcMain.handle('scan-url-with-virustotal', async (event, url) => {
+    try {
+      const result = await scanUrlWithVirusTotal(url);
+      return result; // Return the result directly, not wrapped
+    } catch (error) {
+      console.error('Error scanning URL with VirusTotal:', error);
+      return { success: false, message: `Error: ${error.message}` };
+    }
+  });
+
+  ipcMain.handle('scan-domain-with-virustotal', async (event, domain) => {
+    try {
+      const result = await scanDomainWithVirusTotal(domain);
+      return result; // Return the result directly, not wrapped
+    } catch (error) {
+      console.error('Error scanning domain with VirusTotal:', error);
+      return { success: false, message: `Error: ${error.message}` };
+    }
+  });
+
+  ipcMain.handle('scan-ip-with-virustotal', async (event, ipAddress) => {
+    try {
+      const result = await scanIpWithVirusTotal(ipAddress);
+      return result; // Return the result directly, not wrapped
+    } catch (error) {
+      console.error('Error scanning IP with VirusTotal:', error);
+      return { success: false, message: `Error: ${error.message}` };
+    }
+  });
+
   ipcMain.handle('generate-real-malware-tests', async () => {
     try {
       const result = await generateRealMalwareTests();
@@ -2308,6 +2338,190 @@ async function scanFileWithVirusTotal(filePath) {
   } catch (error) {
     return {
       filePath: filePath,
+      virustotalResult: null,
+      rawOutput: '',
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+async function scanUrlWithVirusTotal(url) {
+  try {
+    const { spawn } = require('child_process');
+    const pythonProcess = spawn('python', ['backend/antivirus.py', 'scan-url', '--url', url], {
+      cwd: process.cwd(),
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    
+    let output = '';
+    pythonProcess.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+    
+    await new Promise((resolve, reject) => {
+      pythonProcess.on('close', (code) => {
+        resolve();
+      });
+    });
+    
+    // Parse VirusTotal URL scan results
+    let virustotalResult = null;
+    
+    // Try to parse the entire output as JSON first
+    try {
+      virustotalResult = JSON.parse(output.trim());
+      if (virustotalResult.success !== undefined) {
+        // Successfully parsed the complete JSON
+      } else {
+        virustotalResult = null;
+      }
+    } catch (e) {
+      // If that fails, try to find JSON in the output
+      const lines = output.split('\n');
+      let jsonLines = [];
+      let braceCount = 0;
+      let inJson = false;
+      
+      for (const line of lines) {
+        if (line.trim().startsWith('{') && !inJson) {
+          inJson = true;
+          jsonLines = [line];
+          braceCount = (line.match(/\{/g) || []).length - (line.match(/\}/g) || []).length;
+        } else if (inJson) {
+          jsonLines.push(line);
+          braceCount += (line.match(/\{/g) || []).length - (line.match(/\}/g) || []).length;
+          
+          if (braceCount === 0) {
+            // We've found the complete JSON
+            try {
+              const jsonString = jsonLines.join('\n');
+              virustotalResult = JSON.parse(jsonString);
+              if (virustotalResult.success !== undefined) {
+                break;
+              }
+            } catch (e) {
+              // Continue looking for valid JSON
+              jsonLines = [];
+              inJson = false;
+              braceCount = 0;
+            }
+          }
+        }
+      }
+    }
+    
+    return {
+      url: url,
+      virustotalResult: virustotalResult,
+      rawOutput: output,
+      success: virustotalResult !== null && virustotalResult.success
+    };
+  } catch (error) {
+    return {
+      url: url,
+      virustotalResult: null,
+      rawOutput: '',
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+async function scanDomainWithVirusTotal(domain) {
+  try {
+    const { spawn } = require('child_process');
+    const pythonProcess = spawn('python', ['backend/antivirus.py', 'scan-domain', '--domain', domain], {
+      cwd: process.cwd(),
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    
+    let output = '';
+    pythonProcess.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+    
+    await new Promise((resolve, reject) => {
+      pythonProcess.on('close', (code) => {
+        resolve();
+      });
+    });
+    
+    // Parse VirusTotal domain scan results
+    const lines = output.split('\n');
+    let virustotalResult = null;
+    
+    for (const line of lines) {
+      if (line.startsWith('{') && line.includes('success')) {
+        try {
+          virustotalResult = JSON.parse(line);
+          break;
+        } catch (e) {
+          // Ignore JSON parsing errors
+        }
+      }
+    }
+    
+    return {
+      domain: domain,
+      virustotalResult: virustotalResult,
+      rawOutput: output,
+      success: virustotalResult !== null && virustotalResult.success
+    };
+  } catch (error) {
+    return {
+      domain: domain,
+      virustotalResult: null,
+      rawOutput: '',
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+async function scanIpWithVirusTotal(ipAddress) {
+  try {
+    const { spawn } = require('child_process');
+    const pythonProcess = spawn('python', ['backend/antivirus.py', 'scan-ip', '--ip', ipAddress], {
+      cwd: process.cwd(),
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    
+    let output = '';
+    pythonProcess.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+    
+    await new Promise((resolve, reject) => {
+      pythonProcess.on('close', (code) => {
+        resolve();
+      });
+    });
+    
+    // Parse VirusTotal IP scan results
+    const lines = output.split('\n');
+    let virustotalResult = null;
+    
+    for (const line of lines) {
+      if (line.startsWith('{') && line.includes('success')) {
+        try {
+          virustotalResult = JSON.parse(line);
+          break;
+        } catch (e) {
+          // Ignore JSON parsing errors
+        }
+      }
+    }
+    
+    return {
+      ipAddress: ipAddress,
+      virustotalResult: virustotalResult,
+      rawOutput: output,
+      success: virustotalResult !== null && virustotalResult.success
+    };
+  } catch (error) {
+    return {
+      ipAddress: ipAddress,
       virustotalResult: null,
       rawOutput: '',
       success: false,

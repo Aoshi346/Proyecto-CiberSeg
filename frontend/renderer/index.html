@@ -94,9 +94,83 @@
     #add-to-vault-modal input,
     #add-to-vault-modal button,
     #add-to-vault-modal textarea {
-      pointer-events: auto;
+      pointer-events: auto !important;
       position: relative;
-      z-index: 1;
+      z-index: 10 !important;
+      background-color: white !important;
+    }
+    
+    
+    /* Ensure save button is visible */
+    #save-to-vault {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      background-color: #059669 !important;
+      color: white !important;
+      min-height: 40px !important;
+      min-width: 150px !important;
+    }
+    
+    /* Ensure save button content is visible */
+    #save-to-vault i,
+    #save-to-vault span {
+      color: white !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+    
+    #save-to-vault * {
+      color: white !important;
+    }
+    
+    /* Override any conflicting text styles */
+    #save-to-vault {
+      text-decoration: none !important;
+      font-weight: 500 !important;
+      font-size: 14px !important;
+      line-height: 1.5 !important;
+    }
+    
+    /* Force icon visibility */
+    #save-to-vault .fas {
+      color: white !important;
+      font-size: 14px !important;
+      margin-right: 8px !important;
+    }
+    
+    /* Ensure modal footer is visible */
+    #add-to-vault-modal .bg-gray-50 {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      flex-shrink: 0 !important;
+    }
+    
+    /* Fix modal structure to prevent footer cutoff */
+    #add-to-vault-modal .bg-white {
+      display: flex !important;
+      flex-direction: column !important;
+      max-height: 90vh !important;
+    }
+    
+    #add-to-vault-modal .overflow-y-auto {
+      flex: 1 !important;
+      overflow-y: auto !important;
+    }
+    
+    /* Fix input field borders - ensure single clean border */
+    #add-to-vault-modal input,
+    #add-to-vault-modal textarea {
+      border: 1px solid #d1d5db !important;
+      outline: none !important;
+    }
+    
+    #add-to-vault-modal input:focus,
+    #add-to-vault-modal textarea:focus {
+      border: 1px solid #059669 !important;
+      box-shadow: 0 0 0 1px #059669 !important;
+      outline: none !important;
     }
     
     /* Fix eye icon positioning */
@@ -109,6 +183,21 @@
       background: white !important;
       padding: 2px 4px !important;
       border-radius: 4px !important;
+    }
+    
+    /* Fix URL input field - ensure it's clickable and has single border */
+    #url-input {
+      pointer-events: auto !important;
+      position: relative !important;
+      z-index: 10 !important;
+      border: 1px solid #d1d5db !important;
+      outline: none !important;
+    }
+    
+    #url-input:focus {
+      border: 1px solid #3b82f6 !important;
+      box-shadow: 0 0 0 1px #3b82f6 !important;
+      outline: none !important;
     }
     
     @keyframes modalSlideIn {
@@ -307,13 +396,6 @@
           <i class="fas fa-search w-5 text-center icon"></i>
           <span class="sidebar-label">Forenses</span>
         </div>
-        <div
-          class="nav-item relative group flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ease-out border border-transparent"
-          data-section="settings">
-          <span class="active-indicator"></span>
-          <i class="fas fa-cog w-5 text-center icon"></i>
-          <span class="sidebar-label">Configuración</span>
-        </div>
       </div>
 
       <div class="text-sm text-gray-500">
@@ -373,16 +455,19 @@
               <!-- Resumen superior -->
               <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
                 <div class="p-4 rounded-lg border border-green-200 bg-green-50">
-                  <div class="text-xs text-green-700">Puntuación</div>
+                  <div class="text-xs text-green-700">Puntuación de Seguridad</div>
                   <div class="text-2xl font-semibold text-green-700" id="dashboard-security-score">0</div>
+                  <div class="text-xs text-green-600 mt-1" id="dashboard-score-breakdown">Base: 0 | Uso: 0</div>
                 </div>
                 <div class="p-4 rounded-lg border border-blue-200 bg-blue-50">
                   <div class="text-xs text-blue-700">Módulos Activos</div>
                   <div class="text-2xl font-semibold text-blue-700" id="dashboard-active-modules">0</div>
+                  <div class="text-xs text-blue-600 mt-1" id="dashboard-modules-breakdown">Usa más módulos para aumentar tu puntuación</div>
                 </div>
                 <div class="p-4 rounded-lg border border-gray-200 bg-gray-50">
                   <div class="text-xs text-gray-600">Última actividad</div>
                   <div class="text-sm font-medium text-gray-800" id="dashboard-last-activity">Nunca</div>
+                  <div class="text-xs text-gray-500 mt-1" id="dashboard-activity-tip">La actividad regular mejora tu puntuación</div>
                 </div>
               </div>
 
@@ -659,10 +744,6 @@
                     <span>Escanear Archivo</span>
                   </button>
                   
-                  <button class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors duration-200 text-sm" data-action="antivirus-settings">
-                    <i class="fas fa-cog"></i>
-                    <span>Configuración</span>
-                  </button>
                 </div>
               </div>
             </div>
@@ -1301,68 +1382,6 @@
           </div>
         </section>
 
-        <!-- Sección Configuración -->
-        <section id="settings-section" class="content-section hidden">
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
-              <div class="flex items-center gap-3 mb-4">
-                <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 text-xl">
-                  <i class="fas fa-cog"></i>
-                </div>
-                <div>
-                  <h3 class="text-lg font-semibold text-gray-800">Configuración General</h3>
-                  <p class="text-sm text-gray-500">Ajustes del sistema</p>
-                </div>
-              </div>
-              <div class="space-y-4">
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600">Notificaciones</span>
-                  <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" class="sr-only peer" checked>
-                    <div
-                      class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
-                    </div>
-                  </label>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600">Escaneo automático</span>
-                  <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" class="sr-only peer" checked>
-                    <div
-                      class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
-                    </div>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
-              <div class="flex items-center gap-3 mb-4">
-                <div class="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 text-xl">
-                  <i class="fas fa-info-circle"></i>
-                </div>
-                <div>
-                  <h3 class="text-lg font-semibold text-gray-800">Información del Sistema</h3>
-                  <p class="text-sm text-gray-500">Estado y detalles del sistema</p>
-                </div>
-              </div>
-              <div class="space-y-2">
-                <div class="flex justify-between items-center">
-                  <span class="text-sm text-gray-600">Versión:</span>
-                  <span id="system-version-info" class="text-sm font-semibold text-gray-800">No disponible</span>
-                </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-sm text-gray-600">Plataforma:</span>
-                  <span id="system-platform-info" class="text-sm font-semibold text-gray-800">No disponible</span>
-                </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-sm text-gray-600">Última actualización:</span>
-                  <span id="system-last-analysis" class="text-sm font-semibold text-gray-800">Nunca</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
 
         <!-- Sección URL Scanner -->
         <section id="urlscanner-section" class="content-section hidden">
@@ -1402,7 +1421,7 @@
                         type="url" 
                         id="url-input" 
                         placeholder="https://ejemplo.com" 
-                        class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        class="flex-1 px-3 py-2 rounded-lg"
                       />
                       <button 
                         id="scan-url-btn" 
@@ -1624,7 +1643,7 @@
       </div>
 
       <!-- Modal Content -->
-      <div class="p-6 overflow-y-auto max-h-[60vh]">
+      <div class="p-6 overflow-y-auto max-h-[50vh]">
         <form id="add-to-vault-form" class="space-y-4">
           <!-- Password Label -->
           <div>
@@ -1752,8 +1771,8 @@
         <button id="cancel-add-vault" class="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors duration-200 flex items-center">
           <i class="fas fa-times mr-2"></i>Cancelar
         </button>
-        <button id="save-to-vault" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
-          <i class="fas fa-save mr-2"></i>Guardar en Bóveda
+        <button id="save-to-vault" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center" style="color: white !important; background-color: #059669 !important;">
+          <i class="fas fa-save mr-2" style="color: white !important;"></i><span style="color: white !important;">Guardar en Bóveda</span>
         </button>
       </div>
     </div>

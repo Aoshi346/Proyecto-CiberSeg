@@ -276,7 +276,6 @@ class CiberSegApp {
         this.openForensicAnalysis();
         break;
       case 'open-tools':
-        this.navigateToSection('settings');
         break;
       // Keylogger actions
       case 'start-keylogger':
@@ -300,9 +299,6 @@ class CiberSegApp {
         break;
       case 'scan-file':
         this.scanFile();
-        break;
-      case 'antivirus-settings':
-        this.openAntivirusSettings();
         break;
       // File Analyzer actions
       case 'analyze-file':
@@ -355,9 +351,6 @@ class CiberSegApp {
         break;
       case 'forensics-export':
         this.exportForensicsResults();
-        break;
-      case 'forensics-settings':
-        this.openForensicsSettings();
         break;
       // Acciones simplificadas del módulo de contraseñas
       case 'copy-password':
@@ -426,7 +419,6 @@ class CiberSegApp {
       passwords: 'Gestión de Contraseñas',
       urlscanner: 'URL Scanner',
       forensics: 'Herramientas Forenses',
-      settings: 'Configuración'
     };
 
     const subtitles = {
@@ -434,7 +426,6 @@ class CiberSegApp {
       passwords: 'Administra y genera contraseñas seguras',
       urlscanner: 'Escanea URLs en busca de amenazas',
       forensics: 'Herramientas de análisis forense digital',
-      settings: 'Configuración del sistema y preferencias'
     };
 
     const titleEl = document.getElementById('page-title');
@@ -797,14 +788,55 @@ class CiberSegApp {
     await this.loadVaultDashboardData();
   }
 
+  // Track module usage for scoring
+  trackModuleUsage(moduleName, action = 'used') {
+    if (!this.appData) {
+      this.appData = {};
+    }
+    
+    // Initialize counters if they don't exist
+    if (!this.appData.scanCount) this.appData.scanCount = 0;
+    if (!this.appData.analysisCount) this.appData.analysisCount = 0;
+    if (!this.appData.urlScanCount) this.appData.urlScanCount = 0;
+    if (!this.appData.keyloggerUsage) this.appData.keyloggerUsage = 0;
+    
+    // Increment appropriate counter
+    switch (moduleName) {
+      case 'antivirus':
+        this.appData.scanCount++;
+        this.appData.lastScanDate = new Date().toISOString();
+        break;
+      case 'forensics':
+        this.appData.analysisCount++;
+        this.appData.lastAnalysis = {
+          timestamp: new Date().toISOString(),
+          type: action
+        };
+        break;
+      case 'urlscanner':
+        this.appData.urlScanCount++;
+        break;
+      case 'keylogger':
+        this.appData.keyloggerUsage++;
+        break;
+    }
+    
+    // Save to localStorage
+    localStorage.setItem('appData', JSON.stringify(this.appData));
+    
+    // Update dashboard immediately
+    this.updateDashboardStatistics();
+  }
+
   async updateDashboardStatistics() {
     try {
       // Calculate security score based on various factors
       let securityScore = 0;
       let activeModules = 0;
       let lastActivityTime = null;
+      let usageScore = 0; // New: Track actual usage
 
-      // Check vault status
+      // Check vault status and usage
       const vaultStats = await window.electronAPI.getVaultStats();
       if (vaultStats.success && vaultStats.totalPasswords > 0) {
         securityScore += 20; // Base score for having vault
@@ -815,17 +847,27 @@ class CiberSegApp {
         else if (vaultStats.averageStrength > 50) securityScore += 10;
         else if (vaultStats.averageStrength > 30) securityScore += 5;
         
+        // Usage-based scoring
+        if (vaultStats.totalPasswords >= 10) usageScore += 20; // Heavy vault usage
+        else if (vaultStats.totalPasswords >= 5) usageScore += 15; // Moderate usage
+        else if (vaultStats.totalPasswords >= 1) usageScore += 10; // Light usage
+        
         // Track vault activity
         if (vaultStats.lastActivity) {
           lastActivityTime = new Date(vaultStats.lastActivity);
         }
       }
 
-      // Check keylogger status
+      // Check keylogger status and usage
       const keyloggerStatus = await window.electronAPI.getKeyloggerStatus();
       if (keyloggerStatus.isRunning) {
         securityScore += 10; // Monitoring active
         activeModules++;
+        
+        // Usage-based scoring for keylogger
+        if (keyloggerStatus.totalCaptured > 100) usageScore += 15; // Heavy monitoring
+        else if (keyloggerStatus.totalCaptured > 50) usageScore += 10; // Moderate monitoring
+        else if (keyloggerStatus.totalCaptured > 10) usageScore += 5; // Light monitoring
         
         // Track keylogger activity
         if (keyloggerStatus.lastActivity) {
@@ -838,8 +880,8 @@ class CiberSegApp {
 
       // Check antivirus status and recent scans
       if (this.appData && this.appData.lastScanDate) {
-      securityScore += 15; // Base antivirus score
-      activeModules++;
+        securityScore += 15; // Base antivirus score
+        activeModules++;
         
         // Add points for recent scans
         const scanTime = new Date(this.appData.lastScanDate);
@@ -848,16 +890,25 @@ class CiberSegApp {
         if (hoursSinceScan < 24) securityScore += 10; // Recent scan
         else if (hoursSinceScan < 168) securityScore += 5; // Within a week
         
+        // Usage-based scoring for antivirus
+        if (this.appData.scanCount >= 10) usageScore += 15; // Frequent scanning
+        else if (this.appData.scanCount >= 5) usageScore += 10; // Regular scanning
+        else if (this.appData.scanCount >= 1) usageScore += 5; // Occasional scanning
+        
         // Track antivirus activity
         if (!lastActivityTime || scanTime > lastActivityTime) {
           lastActivityTime = scanTime;
         }
       }
 
-      // Check forensics capability
+      // Check forensics capability and usage
       if (this.appData && this.appData.lastAnalysis) {
-      securityScore += 10; // Forensics available
-      activeModules++;
+        securityScore += 10; // Forensics available
+        activeModules++;
+        
+        // Usage-based scoring for forensics
+        if (this.appData.analysisCount >= 5) usageScore += 10; // Regular forensics
+        else if (this.appData.analysisCount >= 1) usageScore += 5; // Occasional forensics
         
         // Track forensics activity
         const analysisTime = new Date(this.appData.lastAnalysis.timestamp);
@@ -866,19 +917,49 @@ class CiberSegApp {
         }
       }
 
+      // Check URL Scanner usage
+      if (this.appData && this.appData.urlScanCount) {
+        activeModules++;
+        // Usage-based scoring for URL scanner
+        if (this.appData.urlScanCount >= 20) usageScore += 15; // Heavy URL scanning
+        else if (this.appData.urlScanCount >= 10) usageScore += 10; // Moderate URL scanning
+        else if (this.appData.urlScanCount >= 1) usageScore += 5; // Light URL scanning
+      }
+
+      // Calculate total score (base security + usage bonus)
+      const totalScore = Math.min(100, securityScore + usageScore);
+      
       // Update UI
       const scoreElement = document.getElementById('dashboard-security-score');
       const modulesElement = document.getElementById('dashboard-active-modules');
+      const scoreBreakdownElement = document.getElementById('dashboard-score-breakdown');
+      const modulesBreakdownElement = document.getElementById('dashboard-modules-breakdown');
       
       if (scoreElement) {
-        scoreElement.textContent = Math.min(100, securityScore);
+        scoreElement.textContent = totalScore;
         // Add color coding based on score
-        if (securityScore >= 80) {
+        if (totalScore >= 80) {
           scoreElement.className = 'text-2xl font-semibold text-green-700';
-        } else if (securityScore >= 60) {
+        } else if (totalScore >= 60) {
           scoreElement.className = 'text-2xl font-semibold text-yellow-600';
         } else {
           scoreElement.className = 'text-2xl font-semibold text-red-600';
+        }
+      }
+      
+      // Update score breakdown
+      if (scoreBreakdownElement) {
+        scoreBreakdownElement.textContent = `Base: ${securityScore} | Uso: ${usageScore}`;
+      }
+      
+      // Update modules breakdown with tips
+      if (modulesBreakdownElement) {
+        if (activeModules >= 4) {
+          modulesBreakdownElement.textContent = '¡Excelente! Usando todos los módulos';
+        } else if (activeModules >= 2) {
+          modulesBreakdownElement.textContent = 'Buen progreso. Prueba más módulos';
+        } else {
+          modulesBreakdownElement.textContent = 'Usa más módulos para aumentar tu puntuación';
         }
       }
       
@@ -1760,21 +1841,11 @@ class CiberSegApp {
   }
 
   showAddToVaultModal(password = '') {
-    console.log('Opening modal with password:', password);
-    
     const modal = document.getElementById('add-to-vault-modal');
     const passwordInput = document.getElementById('vault-password');
     const strengthIndicator = document.getElementById('password-strength-indicator');
     const form = document.getElementById('add-to-vault-form');
     const labelInput = document.getElementById('vault-label');
-    
-    console.log('Modal elements found:', {
-      modal: !!modal,
-      passwordInput: !!passwordInput,
-      strengthIndicator: !!strengthIndicator,
-      form: !!form,
-      labelInput: !!labelInput
-    });
     
     // Reset form
     form.reset();
@@ -1793,18 +1864,11 @@ class CiberSegApp {
       input.disabled = false;
     });
     
-    console.log('Modal inputs state:', {
-      passwordReadOnly: passwordInput.readOnly,
-      passwordDisabled: passwordInput.disabled,
-      passwordValue: passwordInput.value
-    });
-    
     // Show password strength indicator
     strengthIndicator.classList.remove('hidden');
     
     // Show the modal
     modal.classList.remove('hidden');
-    console.log('Modal shown');
     
     // Setup modal event listeners if not already done
     this.setupAddToVaultModalEvents();
@@ -1813,7 +1877,6 @@ class CiberSegApp {
     setTimeout(() => {
       this.updatePasswordStrength(passwordInput.value);
       labelInput.focus();
-      console.log('Configuración del modal completa, contraseña readonly:', passwordInput.readOnly);
     }, 100);
   }
 
@@ -1924,15 +1987,6 @@ class CiberSegApp {
       validateForm();
       calculateStrength();
     }, { passive: true });
-    
-    // Add click and focus events for debugging
-    elements.passwordInput.addEventListener('click', (e) => {
-      // Password input clicked
-    });
-    
-    elements.passwordInput.addEventListener('focus', (e) => {
-      // Password input focused
-    });
   }
 
   closeAddToVaultModal() {
@@ -2281,7 +2335,7 @@ class CiberSegApp {
       if (result.success) {
         this.showNotification(result.message, 'success');
         // Add activity log entry
-        this.addActivityLogEntry('vault', 'Contraseña generada', `Nueva contraseña para ${passwordData.label}`, 'success');
+        this.addActivityLogEntry('vault', 'Contraseña generada', `Nueva contraseña para ${label}`, 'success');
     // Actualizar toda la información de bóveda
         await this.loadVaultCount();
         await this.loadPasswordList();
@@ -2495,6 +2549,9 @@ class CiberSegApp {
         
         // Add activity log entry
         this.addActivityLogEntry('keylogger', 'Monitoreo iniciado', 'Keylogger activado para captura de actividad', 'info');
+        
+        // Track module usage for scoring
+        this.trackModuleUsage('keylogger', 'start-monitoring');
         
         // Update module buttons only (dashboard buttons are handled by updateKeyloggerDashboardStatus)
         const startBtn = document.getElementById('keylogger-start-btn');
@@ -3437,6 +3494,9 @@ class CiberSegApp {
           scanType: this.scanProgress?.folderType || 'unknown',
           duration: this.scanProgress ? Date.now() - this.scanProgress.startTime : 0
         });
+        
+        // Track module usage for scoring
+        this.trackModuleUsage('antivirus');
       } else if (progressData.message.includes('All folders scanned')) {
         this.addForensicsLogEntry('Antivirus', `🎉 Todos los escaneos completados: ${progressData.data.total_files_scanned} archivos, ${progressData.data.total_threats_found} amenazas`, 'success');
         // Reset button states when all scans complete
@@ -3788,6 +3848,9 @@ class CiberSegApp {
           
           // Add activity log entry
           this.addActivityLogEntry('forensics', 'Análisis completado', `Archivo analizado: ${analysisData.fileName}`, 'success');
+          
+          // Track module usage for scoring
+          this.trackModuleUsage('forensics', 'file-analysis');
           
           const fileName = analysisResult.analysis?.basic?.name || analysisData.fileName;
           this.addForensicsLogEntry('Analizador', `✅ Análisis completado: ${fileName}`, 'success');
@@ -5146,6 +5209,9 @@ class CiberSegApp {
       // Add activity log entry
       this.addActivityLogEntry('urlscanner', 'URL escaneada', `URL analizada: ${url}`, result.isMalicious ? 'warning' : 'success');
       
+      // Track module usage for scoring
+      this.trackModuleUsage('urlscanner');
+      
       this.showNotification(`URL escaneada: ${result.isMalicious ? 'Amenaza detectada' : 'URL limpia'}`, result.isMalicious ? 'warning' : 'success');
       
     } catch (error) {
@@ -5171,8 +5237,46 @@ class CiberSegApp {
   }
   
   async performUrlScan(url) {
-    // Simulate URL scanning logic
-    // In a real implementation, this would call a backend API
+    try {
+      // Call the backend VirusTotal API
+      const result = await window.electronAPI.scanUrlWithVirusTotal(url);
+      
+      if (result.success && result.virustotalResult) {
+        const vtResult = result.virustotalResult;
+        const isMalicious = vtResult.positives > 0;
+        const isSuspicious = vtResult.positives > 0 && vtResult.positives < vtResult.total_scans * 0.3;
+        
+        return {
+          url: url,
+          timestamp: new Date(),
+          isMalicious: isMalicious,
+          isSuspicious: isSuspicious,
+          threats: vtResult.threats || [],
+          reputation: isMalicious ? 'Malicious' : isSuspicious ? 'Suspicious' : 'Clean',
+          details: {
+            domain: new URL(url).hostname,
+            protocol: new URL(url).protocol,
+            path: new URL(url).pathname,
+            positives: vtResult.positives || 0,
+            totalScans: vtResult.total_scans || 0,
+            scanDate: vtResult.scan_date,
+            permalink: vtResult.permalink
+          },
+          virustotalData: vtResult
+        };
+      } else {
+        // Fallback to simulation if VirusTotal fails
+        return this.performUrlScanSimulation(url);
+      }
+    } catch (error) {
+      console.error('Error calling VirusTotal API:', error);
+      // Fallback to simulation
+      return this.performUrlScanSimulation(url);
+    }
+  }
+  
+  async performUrlScanSimulation(url) {
+    // Fallback simulation for when VirusTotal is not available
     return new Promise((resolve) => {
       setTimeout(() => {
         // Simulate different scan results
@@ -5206,6 +5310,12 @@ class CiberSegApp {
     const statusIcon = result.isMalicious ? 'fa-exclamation-triangle' : result.isSuspicious ? 'fa-exclamation-circle' : 'fa-check-circle';
     const statusText = result.isMalicious ? 'Maliciosa' : result.isSuspicious ? 'Sospechosa' : 'Limpia';
     
+    // VirusTotal specific information
+    const positives = result.details.positives || 0;
+    const totalScans = result.details.totalScans || 0;
+    const scanDate = result.details.scanDate;
+    const permalink = result.details.permalink;
+    
     resultsContainer.innerHTML = `
       <div class="p-4 bg-${statusColor}-50 rounded-lg border border-${statusColor}-200">
         <div class="flex items-center gap-3 mb-3">
@@ -5229,18 +5339,74 @@ class CiberSegApp {
             <span class="text-gray-600">Reputación:</span>
             <span class="font-semibold text-${statusColor}-600">${result.reputation}</span>
           </div>
+          ${totalScans > 0 ? `
+            <div class="flex justify-between">
+              <span class="text-gray-600">Detecciones:</span>
+              <span class="font-semibold text-${statusColor}-600">${positives}/${totalScans}</span>
+            </div>
+          ` : ''}
           <div class="flex justify-between">
             <span class="text-gray-600">Escaneado:</span>
             <span class="text-gray-500">${result.timestamp.toLocaleTimeString('es-ES')}</span>
           </div>
+          ${scanDate ? `
+            <div class="flex justify-between">
+              <span class="text-gray-600">Último escaneo VT:</span>
+              <span class="text-gray-500">${new Date(scanDate * 1000).toLocaleString('es-ES')}</span>
+            </div>
+          ` : ''}
         </div>
         
         ${result.threats.length > 0 ? `
           <div class="mt-3 pt-3 border-t border-${statusColor}-200">
             <p class="text-sm font-medium text-${statusColor}-700 mb-1">Amenazas detectadas:</p>
             <ul class="text-sm text-${statusColor}-600">
-              ${result.threats.map(threat => `<li>• ${threat}</li>`).join('')}
+              ${result.threats.map(threat => {
+                if (typeof threat === 'string') {
+                  return `<li>• ${threat}</li>`;
+                } else {
+                  // Create more coherent threat descriptions in Spanish
+                  const engine = threat.engine || 'Motor Desconocido';
+                  const threatName = threat.name || 'Amenaza Desconocida';
+                  const severity = threat.severity || 'medium';
+                
+                  // Map severity to more descriptive text in Spanish
+                  const severityText = {
+                    'low': 'Riesgo Bajo',
+                    'medium': 'Riesgo Medio', 
+                    'high': 'Riesgo Alto',
+                    'critical': 'Riesgo Crítico'
+                  }[severity] || 'Riesgo Medio';
+                  
+                  // Create more coherent threat description in Spanish
+                  let threatDescription = '';
+                  if (threatName.toLowerCase().includes('malicious site')) {
+                    threatDescription = `Sitio Malicioso (${severityText})`;
+                  } else if (threatName.toLowerCase().includes('malware')) {
+                    threatDescription = `Distribución de Malware (${severityText})`;
+                  } else if (threatName.toLowerCase().includes('phishing')) {
+                    threatDescription = `Sitio de Phishing (${severityText})`;
+                  } else if (threatName.toLowerCase().includes('trojan')) {
+                    threatDescription = `Caballo de Troya (${severityText})`;
+                  } else if (threatName.toLowerCase().includes('virus')) {
+                    threatDescription = `Virus Informático (${severityText})`;
+                  } else {
+                    threatDescription = `${threatName} (${severityText})`;
+                  }
+                  
+                  return `<li>• <strong>${engine}:</strong> ${threatDescription}</li>`;
+                }
+              }).join('')}
             </ul>
+          </div>
+        ` : ''}
+        
+        ${permalink ? `
+          <div class="mt-3 pt-3 border-t border-gray-200">
+            <a href="${permalink}" target="_blank" class="text-blue-600 hover:text-blue-800 text-sm">
+              <i class="fas fa-external-link-alt mr-1"></i>
+              Ver reporte completo en VirusTotal
+            </a>
           </div>
         ` : ''}
       </div>
